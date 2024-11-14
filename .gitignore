@@ -6,6 +6,28 @@ __pycache__/
 # C extensions
 *.so
 
+# Mac OS DS_Store files
+.DS_Store
+*.DS_Store
+
+# Editor directories
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.svn/
+.tox/
+*.swp
+.zed/
+
+# All files inside uploads directory
+app/uploads/*
+uploads/*
+*/uploads/*
+*.npz
+*.tsv
+*.csv
+
 # Distribution / packaging
 .Python
 build/
