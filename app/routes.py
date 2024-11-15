@@ -1,48 +1,55 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 import os
+
+from numpy.f2py.symbolic import normalize
+
 from app.utils.run_analysis import get_pvalues
 from app.utils.benjamini_hotchberg import bh_frd_correction
 import plotly.express as px
 import random
 
-main = Blueprint('main', __name__)
+main = Blueprint("main", __name__)
 
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads")
-ALLOWED_EXTENSIONS = {'txt', 'csv', 'tsv'}
+ALLOWED_EXTENSIONS = {"txt", "csv", "tsv"}
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@main.route('/')
+@main.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@main.route('/plot')
+@main.route("/plot")
 def view_plot():
-    return render_template('plot.html')
+    return render_template("plot.html")
 
 
-@main.route('/upload', methods=['GET', 'POST'])
+@main.route("/upload", methods=["GET", "POST"])
 def upload_data():
-    if request.method == 'POST':
+    if request.method == "POST":
 
         # Check if the UPLOADS_DIR exists, if not create that folder
         if not os.path.exists(UPLOADS_DIR):
             os.makedirs(UPLOADS_DIR)
 
-        if 'gene_expression_data' not in request.files or 'prior_data' not in request.files:
+        if (
+                "gene_expression_data" not in request.files
+                or "prior_data" not in request.files
+        ):
             return "No file part"
 
-        gene_expression_file = request.files['gene_expression_data']
-        prior_data_file = request.files['prior_data']
+        gene_expression_file = request.files["gene_expression_data"]
+        prior_data_file = request.files["prior_data"]
 
-        if gene_expression_file.filename == '' or prior_data_file.filename == '':
+        if gene_expression_file.filename == "" or prior_data_file.filename == "":
             return "No selected file"
 
-        if (gene_expression_file
+        if (
+                gene_expression_file
                 and allowed_file(gene_expression_file.filename)
                 and prior_data_file
                 and allowed_file(prior_data_file.filename)
@@ -66,7 +73,7 @@ def upload_data():
 
                 # Pass p_values and reject to the plot.html template
                 # return render_template('plot.html', p_values=p_values, reject=reject)
-                return render_template('plot.html')
+                return render_template("plot.html")
 
             except Exception as e:
                 return trigger_custom_error(str(e))
@@ -76,47 +83,105 @@ def upload_data():
         return request.method + " method not allowed"
 
 
-@main.route('/update_plot', methods=['POST'])
+@main.route("/update_plot", methods=["POST"])
 def update_plot():
     # Generate 50 random points for x and y
     data = {
         "x": [random.uniform(0, 100) for _ in range(50)],
-        "y": [random.uniform(0, 100) for _ in range(50)]
+        "y": [random.uniform(0, 100) for _ in range(50)],
     }
 
     # Define Plotly data and layout
     graph_data = {
         "data": [
-            {
-                "x": data["x"],
-                "y": data["y"],
-                "mode": "markers",
-                "type": "scatter"
-            }
+            {"x": data["x"], "y": data["y"], "mode": "markers", "type": "scatter"}
         ],
         "layout": {
             "title": "Random Scatter Plot of 50 Points",
             "xaxis": {"title": "X-Axis"},
-            "yaxis": {"title": "Y-Axis"}
-        }
+            "yaxis": {"title": "Y-Axis"},
+        },
     }
 
     return jsonify(graph_data)
 
 
+@main.route("/umap", methods=["GET", "POST"])
+def run_umap():
+    if request.method == "POST":
+        print(request.files)
+        if "data_matrix" not in request.files or "meta_data" not in request.files:
+            return "No file part"
+
+        data_matrix_file = request.files["data_matrix"]
+        meta_data_file = request.files["meta_data"]
+
+        if data_matrix_file.filename == "" or meta_data_file.filename == "":
+            return "No selected file"
+
+        if (data_matrix_file
+                and allowed_file(data_matrix_file.filename)
+                and meta_data_file
+                and allowed_file(meta_data_file.filename)
+        ):
+            data_matrix_filename = os.path.join(UPLOADS_DIR, data_matrix_file.filename)
+            meta_data_filename = os.path.join(UPLOADS_DIR, meta_data_file.filename)
+
+            data_matrix_file.save(data_matrix_filename)
+            meta_data_file.save(meta_data_filename)
+
+            # Now run the UMAP Pipeline
+            print("request.form ", request.form)
+            organism = request.form['organism']
+
+            filter_cells = request.form['filter_cells']
+            filter_cells_value = request.form['filter_cells_value']
+            filter_genes = request.form['filter_genes']
+            filter_genes_value = request.form['filter_genes_value']
+            qc_filter = request.form['qc_filter']
+            qc_filter_value = request.form['qc_filter_value']
+            data_normalize = request.form['data_normalize']
+            data_normalize_value = request.form['data_normalize_value']
+            log_transform = request.form['log_transform']
+
+            pca_components = int(request.form['pca_components'])
+
+            n_neighbors = int(request.form['n_neighbors'])
+            min_dist = float(request.form['min_dist'])
+            metric = request.form['metric']
+
+            return "Files uploaded successfully"
+
+
 # Error handler for 404 Not Found
 @main.app_errorhandler(404)
 def not_found_error(error):
-    return render_template('error.html', error_code=404, error_message="Page Not Found"), 404
+    return (
+        render_template("error.html",
+                        error_code=404,
+                        error_message="Page Not Found"),
+        404,
+    )
 
 
 # Error handler for 500 Internal Server Error
 @main.app_errorhandler(500)
 def internal_error(error):
-    return render_template('error.html', error_code=500, error_message="Internal Server Error"), 500
+    return (
+        render_template(
+            "error.html",
+            error_code=500,
+            error_message="Internal Server Error"
+        ),
+        500,
+    )
 
 
 # Custom error message example
-@main.route('/trigger_error')
+@main.route("/trigger_error")
 def trigger_custom_error(error_message="Error", error_code="Error Code"):
-    return render_template('error.html', error_code=error_code, error_message=error_message)
+    return render_template(
+        "error.html",
+        error_code=error_code,
+        error_message=error_message
+    )

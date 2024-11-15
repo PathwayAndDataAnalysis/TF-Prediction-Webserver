@@ -43,10 +43,10 @@ def get_sd(max_target: int, total_genes: int, iters: int):
 
 
 def sample_worker(
-        sample: pd.DataFrame,
-        prior_network: pd.DataFrame,
-        sd: np.array,
-        max_target: int,
+    sample: pd.DataFrame,
+    prior_network: pd.DataFrame,
+    sd: np.array,
+    max_target: int,
 ):
     sample.dropna(inplace=True)
     sample["rank"] = sample.rank(ascending=False)
@@ -85,10 +85,10 @@ def sample_worker(
     # Identify non-NaN indices for 'rs' to filter the relevant rows
     valid_indices = ~np.isnan(prior_network["rs"])
 
-    z_vals = ((np.abs(prior_network.loc[valid_indices, "rs"]) - 0.5) /
-              sd[prior_network.loc[valid_indices, "valid_target"].astype(int) - 1,
-                 len(sample) - max_target,
-              ])
+    z_vals = (np.abs(prior_network.loc[valid_indices, "rs"]) - 0.5) / sd[
+        prior_network.loc[valid_indices, "valid_target"].astype(int) - 1,
+        len(sample) - max_target,
+    ]
     p_vals = 1 + erf(z_vals / np.sqrt(2))
 
     # Adjust sign based on 'rs' values
@@ -101,11 +101,11 @@ def sample_worker(
 
 
 def run_analysis(
-        tfs,
-        gene_exp: pd.DataFrame,
-        prior_network: pd.DataFrame,
-        sd_dist: np.array,
-        max_target: int,
+    tfs,
+    gene_exp: pd.DataFrame,
+    prior_network: pd.DataFrame,
+    sd_dist: np.array,
+    max_target: int,
 ) -> pd.DataFrame:
     gene_exp = gene_exp.T
     parallel = Parallel(n_jobs=-1, verbose=5, backend="multiprocessing")

@@ -15,4 +15,107 @@
         <input type="submit" value="Upload">
     </form>
 
+
+    <h2>UMAP Pipeline parameters</h2>
+    <form action="/umap" method="post" enctype="multipart/form-data">
+
+        <div>
+            <h3>Data:</h3>
+            <div>
+                <label for="data_matrix">Data Matrix:</label>
+                <input type="file" name="data_matrix" id="data_matrix">
+            </div>
+
+            <div>
+                <label for="meta_data">Meta Data:</label>
+                <input type="file" name="meta_data" id="meta_data">
+            </div>
+
+            <div>
+                <label for="organism">Organism:</label>
+                <select name="organism" id="organism">
+                    <option value="human">Human</option>
+                    <option value="mouse">Mouse</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <h3>Data Filtering:</h3>
+
+            <div>
+                <input type="checkbox" id="filter-cells" name="filter_cells" value="on" checked>
+                <label for="filter-cells">Filter cells expressed in less than</label>
+                <label>
+                    <input type="number" id="filter-cells-value" name="filter_cells_value" value="200" min="0">
+                </label>
+                <span>of genes</span>
+            </div>
+
+            <div>
+                <input type="checkbox" id="filter-genes" name="filter_genes" value="on" checked>
+                <label for="filter-genes">Filter genes expressed in less than</label>
+                <label>
+                    <input type="number" id="filter-genes-value" name="filter_genes_value" value="20" min="0">
+                </label>
+                <span>of cells</span>
+            </div>
+
+            <div>
+                <input type="checkbox" id="qc-filter" name="qc_filter" value="on" checked>
+                <label for="qc-filter">Apply QC filter with threshold</label>
+                <label>
+                    <input type="number" id="qc-filter-value" name="qc_filter_value" value="10" min="0">
+                </label>
+                <span>% of Mitochondrial (MT) Genes</span>
+            </div>
+
+            <div>
+                <input type="checkbox" id="data-normalize" name="data_normalize" value="on" checked>
+                <label for="data-normalize">Normalize data to</label>
+                <label>
+                    <input type="number" id="data-normalize-value" name="data_normalize_value" value="10000" min="0">
+                </label>
+                <span>scale</span>
+            </div>
+
+            <div>
+                <input type="checkbox" id="log-transform" name="log_transform" value="on" checked>
+                <label for="log-transform">Apply Log transformation</label>
+            </div>
+        </div>
+
+        <div>
+            <h3>Dimension Reduction:</h3>
+
+            <label for="pca_components">Number of PCA Components:</label>
+            <input type="number" name="pca_components" id="pca_components" value="2" min="0">
+        </div>
+
+        <div>
+            <h3>2D Projection: </h3>
+            <div>
+                <label for="n_neighbors">n_neighbors:</label>
+                <input type="number" name="n_neighbors" id="n_neighbors" value="15" min="0">
+            </div>
+
+            <div>
+                <label for="min_dist">min_dist:</label>
+                <input type="text" name="min_dist" id="min_dist" value="0.1">
+            </div>
+
+            <div>
+                <label for="metric">metric:</label>
+
+                <select name="metric" id="metric">
+                    <option value="cosine">cosine</option>
+                    <option value="euclidean">euclidean</option>
+                </select>
+            </div>
+
+        </div>
+
+        <input type="submit" value="Run UMAP">
+    </form>
+
 {% endblock %}
