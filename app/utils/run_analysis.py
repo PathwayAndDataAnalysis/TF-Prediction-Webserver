@@ -144,18 +144,22 @@ def read_mouse_to_human_mapping_file():
     mth_file = "mouse_to_human.tsv"
     mth_file_path = os.path.join(UPLOADS_DIR, mth_file)
 
-    if not os.path.isfile(mth_file):
-        print("Mouse to human mapping file does not exist. Let's download it.\n")
-        file_url = "https://www.cs.umb.edu/~kisan/data/mouse_to_human.tsv"
+    if os.path.isfile(mth_file_path):
+        print("Mouse to human mapping file exists. Let's read")
+        return pd.read_csv(mth_file_path, sep="\t")
 
-        try:
-            response = requests.get(file_url)
-            with open(mth_file_path, "wb") as f:
-                f.write(response.content)
-            print("Mouse to human mapping file downloaded successfully.")
+    print("Mouse to human mapping file does not exist. Let's download it.\n")
+    file_url = "https://www.cs.umb.edu/~kisan/data/mouse_to_human.tsv"
 
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to download the file: {e}")
+    try:
+        response = requests.get(file_url)
+        with open(mth_file_path, "wb") as f:
+            f.write(response.content)
+        print("Mouse to human mapping file downloaded successfully.")
+
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to download the mouse to human map file: {e}")
+        raise Exception(f"Failed to download the mouse to human map file: {e}")
 
     return pd.read_csv(mth_file_path, sep="\t")
 
@@ -209,11 +213,19 @@ def read_data(p_file: str, g_file: str):
 
 
 def get_pvalues(prior_file: str, gene_file: str, iters: int) -> pd.DataFrame:
-    prior_net, gene_e = read_data(prior_file, gene_file)
+    try:
+        prior_net, gene_e = read_data(prior_file, gene_file)
+        p_values = main(prior_net, gene_e, iters)
+        p_values.dropna(axis=1, how="all", inplace=True)
+        return p_values
+    except Exception as e:
+        raise Exception(f"Failed to run the analysis: {e}")
 
-    p_values = main(prior_net, gene_e, iters)
-
-    # Remove columns with all NaN values
-    p_values.dropna(axis=1, how="all", inplace=True)
-
-    return p_values
+    # prior_net, gene_e = read_data(prior_file, gene_file)
+    #
+    # p_values = main(prior_net, gene_e, iters)
+    #
+    # # Remove columns with all NaN values
+    # p_values.dropna(axis=1, how="all", inplace=True)
+    #
+    # return p_values

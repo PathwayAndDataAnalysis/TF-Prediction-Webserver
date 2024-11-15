@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block title %}Plot Page{% endblock %}
+
+
+{% block content %}
+    <!-- Form for selecting plot options -->
+    <form id="plotForm">
+        <label for="x_axis">X-Axis:</label>
+        <select id="x_axis" name="x_axis">
+            {% for column in columns %}
+                <option value="{{ column }}">{{ column }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="y_axis">Y-Axis:</label>
+        <select id="y_axis" name="y_axis">
+            {% for column in columns %}
+                <option value="{{ column }}">{{ column }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Optional filter for data customization -->
+        <label for="filter_value">Filter (optional):</label>
+        <input type="text" id="filter_value" name="filter_value" placeholder="Enter filter value">
+
+        <button type="button" onclick="updatePlot()">Update Plot</button>
+    </form>
+
+    <!-- Scatter plot container -->
+    <div id="scatterPlot" style="width: 100vw; height: 92vh;"></div>
+
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        // Initial load function
+        $(document).ready(function () {
+            updatePlot(); // Load initial plot with default selections
+        });
+
+        function updatePlot() {
+            // Send AJAX request to Flask backend
+            $.ajax({
+                url: '/update_plot',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({}),
+                success: function (response) {
+                    const graphData = JSON.parse(JSON.stringify(response));
+
+                    Plotly.newPlot('scatterPlot', graphData.data, graphData.layout);
+
+                    // Update plot when window is resized
+                    $(window).resize(function () {
+                        Plotly.relayout('scatterPlot', {
+                            width: window.innerWidth,
+                            height: window.innerHeight * 0.92
+                        });
+                    });
+                },
+                error: function (error) {
+                    console.error("Error updating plot:", error);
+                }
+            });
+        }
+    </script>
+
+{% endblock %}

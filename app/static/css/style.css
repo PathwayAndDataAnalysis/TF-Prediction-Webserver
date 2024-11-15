@@ -8,14 +8,13 @@ body {
 }
 
 header {
-    background-color: #818181;
-    color: white;
-    padding: 0.5em;
+    background-color: #efefef;
+    color: black;
+    padding: 0.25em;
     text-align: center;
 }
 
 footer {
-    background-color: #ddd;
     color: #333;
     text-align: center;
     padding: 0.25em;
