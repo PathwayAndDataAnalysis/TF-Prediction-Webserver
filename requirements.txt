@@ -7,3 +7,5 @@ scipy~=1.14.1
 joblib~=1.4.2
 requests~=2.32.3
 plotly~=5.24.1
+umap~=0.1.1
+scanpy==1.10.4

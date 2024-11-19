@@ -1,10 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 import os
-
-from numpy.f2py.symbolic import normalize
-
 from app.utils.run_analysis import get_pvalues
 from app.utils.benjamini_hotchberg import bh_frd_correction
+from app.utils.run_umap_pipeline import run_umap_pipeline
+from app.utils.get_umap import get_umap_coordinates
 import plotly.express as px
 import random
 
@@ -85,21 +84,35 @@ def upload_data():
 
 @main.route("/update_plot", methods=["POST"])
 def update_plot():
-    # Generate 50 random points for x and y
+    # Read UMAP data from file
+    umap_data_file = os.path.join(UPLOADS_DIR, "umap_results.csv")
+    umap_data = get_umap_coordinates(umap_data_file)
+
     data = {
-        "x": [random.uniform(0, 100) for _ in range(50)],
-        "y": [random.uniform(0, 100) for _ in range(50)],
+        "x": umap_data["UMAP1"].tolist(),
+        "y": umap_data["UMAP2"].tolist(),
     }
 
     # Define Plotly data and layout
     graph_data = {
-        "data": [
-            {"x": data["x"], "y": data["y"], "mode": "markers", "type": "scatter"}
-        ],
+        "data": [{
+            "x": data["x"],
+            "y": data["y"],
+            "mode": "markers",
+            "type": "scatter",
+            "marker": {
+                "color": umap_data["Cluster"].tolist(),
+                "size": 4,
+                # "showscale": True,
+                "colorscale": "Viridis",
+            },
+            "text": umap_data["Cluster"].tolist(),
+            "hoverinfo": "text",
+        }],
         "layout": {
-            "title": "Random Scatter Plot of 50 Points",
-            "xaxis": {"title": "X-Axis"},
-            "yaxis": {"title": "Y-Axis"},
+            "title": "UMAP Plot",
+            "xaxis": {"title": "UMAP1"},
+            "yaxis": {"title": "UMAP2"},
         },
     }
 
@@ -108,49 +121,69 @@ def update_plot():
 
 @main.route("/umap", methods=["GET", "POST"])
 def run_umap():
-    if request.method == "POST":
-        print(request.files)
-        if "data_matrix" not in request.files or "meta_data" not in request.files:
-            return "No file part"
-
-        data_matrix_file = request.files["data_matrix"]
-        meta_data_file = request.files["meta_data"]
-
-        if data_matrix_file.filename == "" or meta_data_file.filename == "":
-            return "No selected file"
-
-        if (data_matrix_file
-                and allowed_file(data_matrix_file.filename)
-                and meta_data_file
-                and allowed_file(meta_data_file.filename)
-        ):
-            data_matrix_filename = os.path.join(UPLOADS_DIR, data_matrix_file.filename)
-            meta_data_filename = os.path.join(UPLOADS_DIR, meta_data_file.filename)
-
-            data_matrix_file.save(data_matrix_filename)
-            meta_data_file.save(meta_data_filename)
-
-            # Now run the UMAP Pipeline
-            print("request.form ", request.form)
-            organism = request.form['organism']
-
-            filter_cells = request.form['filter_cells']
-            filter_cells_value = request.form['filter_cells_value']
-            filter_genes = request.form['filter_genes']
-            filter_genes_value = request.form['filter_genes_value']
-            qc_filter = request.form['qc_filter']
-            qc_filter_value = request.form['qc_filter_value']
-            data_normalize = request.form['data_normalize']
-            data_normalize_value = request.form['data_normalize_value']
-            log_transform = request.form['log_transform']
-
-            pca_components = int(request.form['pca_components'])
-
-            n_neighbors = int(request.form['n_neighbors'])
-            min_dist = float(request.form['min_dist'])
-            metric = request.form['metric']
-
-            return "Files uploaded successfully"
+    return render_template("plot.html")
+    # if request.method == "POST":
+    #     print(request.files)
+    #     if "data_matrix" not in request.files or "meta_data" not in request.files:
+    #         return "No file part"
+    #
+    #     data_matrix_file = request.files["data_matrix"]
+    #     meta_data_file = request.files["meta_data"]
+    #
+    #     if data_matrix_file.filename == "" or meta_data_file.filename == "":
+    #         return "No selected file"
+    #
+    #     if (data_matrix_file
+    #             and allowed_file(data_matrix_file.filename)
+    #             and meta_data_file
+    #             and allowed_file(meta_data_file.filename)
+    #     ):
+    #         data_matrix_filename = os.path.join(UPLOADS_DIR, data_matrix_file.filename)
+    #         meta_data_filename = os.path.join(UPLOADS_DIR, meta_data_file.filename)
+    #
+    #         data_matrix_file.save(data_matrix_filename)
+    #         meta_data_file.save(meta_data_filename)
+    #
+    #         # Now run the UMAP Pipeline
+    #         print("request.form ", request.form)
+    #         organism = request.form['organism']
+    #
+    #         filter_cells = request.form['filter_cells']
+    #         filter_cells_value = request.form['filter_cells_value']
+    #         filter_genes = request.form['filter_genes']
+    #         filter_genes_value = request.form['filter_genes_value']
+    #         qc_filter = request.form['qc_filter']
+    #         qc_filter_value = request.form['qc_filter_value']
+    #         data_normalize = request.form['data_normalize']
+    #         data_normalize_value = request.form['data_normalize_value']
+    #         log_transform = request.form['log_transform']
+    #
+    #         pca_components = int(request.form['pca_components'])
+    #
+    #         n_neighbors = int(request.form['n_neighbors'])
+    #         min_dist = float(request.form['min_dist'])
+    #         metric = request.form['metric']
+    #
+    #         # Now run the UMAP Pipeline
+    #         run_umap_pipeline(data_matrix_filename=data_matrix_filename.split("/")[-1],
+    #                           meta_data_filename=meta_data_filename.split("/")[-1],
+    #                           organism=organism,
+    #                           filter_cells=filter_cells,
+    #                           filter_cells_value=int(filter_cells_value),
+    #                           filter_genes=filter_genes,
+    #                           filter_genes_value=int(filter_genes_value),
+    #                           qc_filter=qc_filter,
+    #                           qc_filter_value=float(qc_filter_value),
+    #                           data_normalize=data_normalize,
+    #                           data_normalize_value=int(data_normalize_value),
+    #                           log_transform=log_transform,
+    #                           pca_components=pca_components,
+    #                           n_neighbors=n_neighbors,
+    #                           min_dist=min_dist,
+    #                           metric=metric
+    #                           )
+    #
+    #         return render_template("plot.html")
 
 
 # Error handler for 404 Not Found
