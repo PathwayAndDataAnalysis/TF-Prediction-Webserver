@@ -3,24 +3,37 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-    <h2>Homepage</h2>
 
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <label for="gene_expression_data">Gene Expression:</label>
-        <input type="file" name="gene_expression_data" id="gene_expression_data">
+    <h3>Transcription Factor Activity Prediction Inputs</h3>
+    <form action="/run_analysis" method="post" enctype="multipart/form-data">
+        <div class="outline_div">
+            <div>
+                <label for="gene_expression_data">Gene Expression:</label>
+                <input type="file" name="gene_expression_data" id="gene_expression_data">
+            </div>
 
-        <label for="prior_data">Prior Data File:</label>
-        <input type="file" name="prior_data" id="prior_data">
+            <div>
+                <label for="prior_data">Prior Data File:</label>
+                <input type="file" name="prior_data" id="prior_data">
+            </div>
 
-        <input type="submit" value="Upload">
+            <div>
+                <label for="iters">Iterations: </label>
+                <input type="number" name="iters" id="iters" value="100000">
+            </div>
+
+            <div>
+                <input type="submit" value="Run Analysis" class="my_button">
+            </div>
+        </div>
     </form>
 
 
-    <h2>UMAP Pipeline parameters</h2>
+    <h3>UMAP Pipeline parameters</h3>
     <form action="/umap" method="post" enctype="multipart/form-data">
 
-        <div>
-            <h3>Data:</h3>
+        <div class="outline_div">
+            <p>Data:</p>
             <div>
                 <label for="data_matrix">Data Matrix:</label>
                 <input type="file" name="data_matrix" id="data_matrix">
@@ -40,8 +53,8 @@
             </div>
         </div>
 
-        <div>
-            <h3>Data Filtering:</h3>
+        <div class="outline_div">
+            <p>Data Filtering:</p>
 
             <div>
                 <input type="checkbox" id="filter-cells" name="filter_cells" value="on" checked>
@@ -85,15 +98,16 @@
             </div>
         </div>
 
-        <div>
-            <h3>Dimension Reduction:</h3>
-
-            <label for="pca_components">Number of PCA Components:</label>
-            <input type="number" name="pca_components" id="pca_components" value="50" min="2">
+        <div class="outline_div">
+            <p>Dimension Reduction:</p>
+            <div>
+                <label for="pca_components">Number of PCA Components:</label>
+                <input type="number" name="pca_components" id="pca_components" value="10" min="2">
+            </div>
         </div>
 
-        <div>
-            <h3>2D Projection: </h3>
+        <div class="outline_div">
+            <p>2D Projection: </p>
             <div>
                 <label for="n_neighbors">n_neighbors:</label>
                 <input type="number" name="n_neighbors" id="n_neighbors" value="15" min="0">
@@ -112,10 +126,9 @@
                     <option value="euclidean">euclidean</option>
                 </select>
             </div>
-
         </div>
 
-        <input type="submit" value="Run UMAP">
+        <input type="submit" value="Run UMAP" class="my_button">
     </form>
 
 {% endblock %}

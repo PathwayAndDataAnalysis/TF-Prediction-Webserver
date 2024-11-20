@@ -72,10 +72,16 @@ def run_umap_pipeline(data_matrix_filename: str,
 
     print("Saving UMAP coordinates...")
     cluster_column = "seurat_clusters"
-    umap_results = pd.DataFrame(adata.obsm["X_umap"], columns=["UMAP1", "UMAP2"], index=adata.obs_names)
-    umap_results["Cluster"] = (adata.obs[cluster_column] if cluster_column in adata.obs else None)
+
+    # umap_results = pd.DataFrame(adata.obsm["X_umap"], columns=["UMAP1", "UMAP2"], index=adata.obs_names)
+    # umap_results["Cluster"] = (adata.obs[cluster_column] if cluster_column in adata.obs else None)
+
     # Save the UMAP coordinates
+    umap_df = adata.obsm.to_df()
+    umap_df["Cluster"] = (adata.obs[cluster_column] if cluster_column in adata.obs else None)
+
     umap_output_filename = os.path.join(UPLOADS_DIR, "umap_coordinates.csv")
-    adata.obsm.to_df().to_csv(umap_output_filename)
-    umap_output_filename = os.path.join(UPLOADS_DIR, "umap_results.csv")
-    umap_results.to_csv(umap_output_filename)
+    umap_df.to_csv(umap_output_filename)
+
+    # umap_output_filename = os.path.join(UPLOADS_DIR, "umap_results.csv")
+    # umap_results.to_csv(umap_output_filename)

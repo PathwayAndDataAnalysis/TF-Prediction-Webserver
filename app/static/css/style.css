@@ -26,3 +26,34 @@ footer {
 h2 {
     color: #333;
 }
+
+.outline_div {
+    margin: 5px;
+    padding: 5px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+}
+
+
+.my_button {
+    margin: 5px;
+    padding: 10px 20px;
+    background-color: #6e8efb;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.my_button:hover {
+    background-color: #324da8;
+}
+
+.my_button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

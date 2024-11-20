@@ -27,18 +27,15 @@ def view_plot():
     return render_template("plot.html")
 
 
-@main.route("/upload", methods=["GET", "POST"])
-def upload_data():
+@main.route("/run_analysis", methods=["GET", "POST"])
+def run_tf_analysis():
     if request.method == "POST":
 
         # Check if the UPLOADS_DIR exists, if not create that folder
         if not os.path.exists(UPLOADS_DIR):
             os.makedirs(UPLOADS_DIR)
 
-        if (
-                "gene_expression_data" not in request.files
-                or "prior_data" not in request.files
-        ):
+        if "gene_expression_data" not in request.files or "prior_data" not in request.files:
             return "No file part"
 
         gene_expression_file = request.files["gene_expression_data"]
@@ -47,28 +44,27 @@ def upload_data():
         if gene_expression_file.filename == "" or prior_data_file.filename == "":
             return "No selected file"
 
-        if (
-                gene_expression_file
+        if (gene_expression_file
                 and allowed_file(gene_expression_file.filename)
                 and prior_data_file
                 and allowed_file(prior_data_file.filename)
         ):
-            # gene_expression_filename = os.path.join(UPLOADS_DIR, gene_expression_file.filename)
-            # prior_data_filename = os.path.join(UPLOADS_DIR, prior_data_file.filename)
-            #
-            # gene_expression_file.save(gene_expression_filename)
-            # prior_data_file.save(prior_data_filename)
+            gene_expression_filename = os.path.join(UPLOADS_DIR, gene_expression_file.filename)
+            prior_data_filename = os.path.join(UPLOADS_DIR, prior_data_file.filename)
+
+            gene_expression_file.save(gene_expression_filename)
+            prior_data_file.save(prior_data_filename)
 
             # Now Run the analysis
-            iters = 100_000
+            iters = int(request.form["iters"])
             try:
-                # p_values = get_pvalues(prior_data_filename.split("/")[-1], gene_expression_filename.split("/")[-1],
-                #                        iters)
-                # p_file_path = os.path.join(UPLOADS_DIR, "p_values.tsv")
-                # p_values.to_csv(p_file_path, sep="\t")
-                #
-                # # Now run the Benjamini-Hochberg FDR correction
-                # reject = bh_frd_correction(p_file_path, alpha=0.05)
+                p_values = get_pvalues(prior_data_filename.split("/")[-1], gene_expression_filename.split("/")[-1],
+                                       iters)
+                p_file_path = os.path.join(UPLOADS_DIR, "p_values.tsv")
+                p_values.to_csv(p_file_path, sep="\t")
+
+                # Now run the Benjamini-Hochberg FDR correction
+                reject = bh_frd_correction(p_file_path, alpha=0.05)
 
                 # Pass p_values and reject to the plot.html template
                 # return render_template('plot.html', p_values=p_values, reject=reject)
@@ -85,14 +81,25 @@ def upload_data():
 @main.route("/update_plot", methods=["POST"])
 def update_plot():
     # Read UMAP data from file
-    umap_data_file = os.path.join(UPLOADS_DIR, "umap_results.csv")
+    umap_data_file = os.path.join(UPLOADS_DIR, "umap_coordinates.csv")
     umap_data = get_umap_coordinates(umap_data_file)
 
+    plot_type = request.json["plot_type"]
+
     data = {
-        "x": umap_data["UMAP1"].tolist(),
-        "y": umap_data["UMAP2"].tolist(),
+        "x": umap_data["X_umap1"].tolist(),
+        "y": umap_data["X_umap2"].tolist(),
+    } if plot_type == "umap" else {
+        "x": umap_data["X_pca1"].tolist(),
+        "y": umap_data["X_pca2"].tolist(),
     }
 
+    # Define layout for the plot
+    layout = {
+        "title": "UMAP Plot" if plot_type == "umap" else "Top 2 PCA Component Plot",
+        "xaxis": {"title": "UMAP1" if plot_type == "umap" else "PCA1"},
+        "yaxis": {"title": "UMAP2" if plot_type == "umap" else "PCA2"},
+    }
     # Define Plotly data and layout
     graph_data = {
         "data": [{
@@ -102,18 +109,15 @@ def update_plot():
             "type": "scatter",
             "marker": {
                 "color": umap_data["Cluster"].tolist(),
-                "size": 4,
+                "size": 5,
                 # "showscale": True,
                 "colorscale": "Viridis",
             },
             "text": umap_data["Cluster"].tolist(),
             "hoverinfo": "text",
         }],
-        "layout": {
-            "title": "UMAP Plot",
-            "xaxis": {"title": "UMAP1"},
-            "yaxis": {"title": "UMAP2"},
-        },
+        "layout": layout,
+
     }
 
     return jsonify(graph_data)
@@ -184,6 +188,8 @@ def run_umap():
     #                           )
     #
     #         return render_template("plot.html")
+    #
+    #     return trigger_custom_error("Invalid file type")
 
 
 # Error handler for 404 Not Found
