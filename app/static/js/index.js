@@ -23,6 +23,7 @@ function updatePlot() {
     })
         .then(response => response.json())
         .then(data => {
+            console.log(data.data);
             Plotly.newPlot('scatterPlot', data.data, data.layout);
 
             // Update plot when window is resized
@@ -34,17 +35,26 @@ function updatePlot() {
             });
 
             // Update tf_name elements dropdown
-            tfs = data.tfs;
-            selected_tf = data.selected_tf;
+            let tfs = data.tfs;
+
+            // Add Select Transcription Factor option in first position of tfs
+            tfs.unshift('Select Transcription Factor');
+
+            let selected_tf = data.selected_tf;
+
+            if (selected_tf === '')
+                selected_tf = 'Select Transcription Factor';
+
             const tfNameDropdown = document.getElementById('tf_name');
             tfNameDropdown.innerHTML = '';
             for (let i = 0; i < tfs.length; i++) {
                 const option = document.createElement('option');
                 option.value = tfs[i];
                 option.text = tfs[i];
-                if (tfs[i] === selected_tf) {
+
+                if (tfs[i] === selected_tf)
                     option.selected = true;
-                }
+
                 tfNameDropdown.appendChild(option);
             }
 

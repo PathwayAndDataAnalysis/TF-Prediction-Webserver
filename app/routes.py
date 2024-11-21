@@ -7,6 +7,7 @@ from app.utils.benjamini_hotchberg import bh_frd_correction
 from app.utils.read_data import read_umap_coordinates_file, read_pvalues_file, read_bh_reject
 from app.utils.run_umap_pipeline import run_umap_pipeline
 from app.utils.tf_analysis import get_pvalues
+from app.utils.utils import map_cluster_value
 
 main = Blueprint("main", __name__)
 
@@ -101,14 +102,17 @@ def update_plot():
     umap_data = read_umap_coordinates_file(UPLOADS_DIR)
     p_values = read_pvalues_file(UPLOADS_DIR)
 
+    if selected_tf_name == "Select Transcription Factor":
+        selected_tf_name = ""
+
     if selected_tf_name:
         bh_reject = read_bh_reject(UPLOADS_DIR)
-        bh_reject.replace({True: 1, False: 2}, inplace=True)
+        bh_reject.replace({True: 0.5, False: 1.0}, inplace=True)  # Because Plotly scales the colorscale between 0 and 1
         bh_reject.fillna(0, inplace=True)
         umap_data[selected_tf_name] = bh_reject[selected_tf_name]
 
-    print("umap_data: ", umap_data.head())
-    umap_data.to_csv(os.path.join(UPLOADS_DIR, "umap_coordinates_new.csv"), sep="\t")
+    # print("umap_data: ", umap_data.head())
+    # umap_data.to_csv(os.path.join(UPLOADS_DIR, "umap_coordinates_new.csv"), sep="\t")
 
     data = (
         {
@@ -136,12 +140,12 @@ def update_plot():
     # Define color scale for the plot
     custom_color = umap_data["Cluster"].tolist() if not selected_tf_name else umap_data[selected_tf_name].tolist()
     custom_colorscale = "Viridis" if not selected_tf_name else [
-        [0.0, "gray"],
-        [1.0, "green"],
-        [2.0, "red"]
+        [0.0, "gray"],  # For cluster NaN
+        [0.5, "green"],  # For cluster True
+        [1.0, "red"]  # For cluster False
     ]
-    # custom_colorscale = "Viridis"
-    custom_text = umap_data["Cluster"].tolist() if not selected_tf_name else umap_data[selected_tf_name].tolist()
+    custom_text = umap_data["Cluster"].tolist() if not selected_tf_name else [map_cluster_value(value) for value in
+                                                                              umap_data[selected_tf_name].tolist()]
     custom_hovertemplate = (
         "<b>Cluster:</b> %{text}<br><b>UMAP1:</b> %{x}<br><b>UMAP2:</b> %{y}"
         if selected_plot_type == "umap"
@@ -160,7 +164,7 @@ def update_plot():
                     # "showscale": True,
                     "color": custom_color,
                     "size": 5,
-                    "opacity": 0.6,
+                    "opacity": 0.5,
                     "colorscale": custom_colorscale
                 },
                 "text": custom_text,
