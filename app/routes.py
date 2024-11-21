@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 import os
-from app.utils.run_analysis import get_pvalues
+
+from plotly.serializers import custom_serializers
+
 from app.utils.benjamini_hotchberg import bh_frd_correction
+from app.utils.read_data import read_umap_coordinates_file, read_pvalues_file, read_bh_reject
 from app.utils.run_umap_pipeline import run_umap_pipeline
-from app.utils.get_umap import get_umap_coordinates
-import plotly.express as px
-import random
+from app.utils.tf_analysis import get_pvalues
 
 main = Blueprint("main", __name__)
 
@@ -35,7 +36,10 @@ def run_tf_analysis():
         if not os.path.exists(UPLOADS_DIR):
             os.makedirs(UPLOADS_DIR)
 
-        if "gene_expression_data" not in request.files or "prior_data" not in request.files:
+        if (
+                "gene_expression_data" not in request.files
+                or "prior_data" not in request.files
+        ):
             return "No file part"
 
         gene_expression_file = request.files["gene_expression_data"]
@@ -44,12 +48,15 @@ def run_tf_analysis():
         if gene_expression_file.filename == "" or prior_data_file.filename == "":
             return "No selected file"
 
-        if (gene_expression_file
+        if (
+                gene_expression_file
                 and allowed_file(gene_expression_file.filename)
                 and prior_data_file
                 and allowed_file(prior_data_file.filename)
         ):
-            gene_expression_filename = os.path.join(UPLOADS_DIR, gene_expression_file.filename)
+            gene_expression_filename = os.path.join(
+                UPLOADS_DIR, gene_expression_file.filename
+            )
             prior_data_filename = os.path.join(UPLOADS_DIR, prior_data_file.filename)
 
             gene_expression_file.save(gene_expression_filename)
@@ -58,13 +65,18 @@ def run_tf_analysis():
             # Now Run the analysis
             iters = int(request.form["iters"])
             try:
-                p_values = get_pvalues(prior_data_filename.split("/")[-1], gene_expression_filename.split("/")[-1],
-                                       iters)
+                p_values = get_pvalues(
+                    prior_data_filename.split("/")[-1],
+                    gene_expression_filename.split("/")[-1],
+                    iters,
+                )
                 p_file_path = os.path.join(UPLOADS_DIR, "p_values.tsv")
                 p_values.to_csv(p_file_path, sep="\t")
 
                 # Now run the Benjamini-Hochberg FDR correction
                 reject = bh_frd_correction(p_file_path, alpha=0.05)
+                reject_file_path = os.path.join(UPLOADS_DIR, "reject.tsv")
+                reject.to_csv(reject_file_path, sep="\t")
 
                 # Pass p_values and reject to the plot.html template
                 # return render_template('plot.html', p_values=p_values, reject=reject)
@@ -80,44 +92,85 @@ def run_tf_analysis():
 
 @main.route("/update_plot", methods=["POST"])
 def update_plot():
-    # Read UMAP data from file
-    umap_data_file = os.path.join(UPLOADS_DIR, "umap_coordinates.csv")
-    umap_data = get_umap_coordinates(umap_data_file)
+    selected_plot_type = request.json["plot_type"]
+    selected_tf_name = request.json["tf_name"]
 
-    plot_type = request.json["plot_type"]
+    print("selected_plot_type: ", selected_plot_type)
+    print("selected_tf_name: ", selected_tf_name)
 
-    data = {
-        "x": umap_data["X_umap1"].tolist(),
-        "y": umap_data["X_umap2"].tolist(),
-    } if plot_type == "umap" else {
-        "x": umap_data["X_pca1"].tolist(),
-        "y": umap_data["X_pca2"].tolist(),
-    }
+    umap_data = read_umap_coordinates_file(UPLOADS_DIR)
+    p_values = read_pvalues_file(UPLOADS_DIR)
+
+    if selected_tf_name:
+        bh_reject = read_bh_reject(UPLOADS_DIR)
+        bh_reject.replace({True: 1, False: 2}, inplace=True)
+        bh_reject.fillna(0, inplace=True)
+        umap_data[selected_tf_name] = bh_reject[selected_tf_name]
+
+    print("umap_data: ", umap_data.head())
+    umap_data.to_csv(os.path.join(UPLOADS_DIR, "umap_coordinates_new.csv"), sep="\t")
+
+    data = (
+        {
+            "x": umap_data["X_umap1"].tolist(),
+            "y": umap_data["X_umap2"].tolist(),
+        }
+        if selected_plot_type == "umap"
+        else {
+            "x": umap_data["X_pca1"].tolist(),
+            "y": umap_data["X_pca2"].tolist(),
+        }
+    )
+
+    # Dynamic Title
+    title = f"UMAP Plot {selected_tf_name}" if selected_plot_type == "umap" else f"Top 2 PCA Components Plot {selected_tf_name}"
 
     # Define layout for the plot
     layout = {
-        "title": "UMAP Plot" if plot_type == "umap" else "Top 2 PCA Component Plot",
-        "xaxis": {"title": "UMAP1" if plot_type == "umap" else "PCA1"},
-        "yaxis": {"title": "UMAP2" if plot_type == "umap" else "PCA2"},
+        "title": title,
+        "xaxis": {"title": "UMAP1" if selected_plot_type == "umap" else "PCA1"},
+        "yaxis": {"title": "UMAP2" if selected_plot_type == "umap" else "PCA2"},
+        "hovermode": "closest",
     }
+
+    # Define color scale for the plot
+    custom_color = umap_data["Cluster"].tolist() if not selected_tf_name else umap_data[selected_tf_name].tolist()
+    custom_colorscale = "Viridis" if not selected_tf_name else [
+        [0.0, "gray"],
+        [1.0, "green"],
+        [2.0, "red"]
+    ]
+    # custom_colorscale = "Viridis"
+    custom_text = umap_data["Cluster"].tolist() if not selected_tf_name else umap_data[selected_tf_name].tolist()
+    custom_hovertemplate = (
+        "<b>Cluster:</b> %{text}<br><b>UMAP1:</b> %{x}<br><b>UMAP2:</b> %{y}"
+        if selected_plot_type == "umap"
+        else "<b>Cluster:</b> %{text}<br><b>PCA1:</b> %{x}<br><b>PCA2:</b> %{y}"
+    )
+
     # Define Plotly data and layout
     graph_data = {
-        "data": [{
-            "x": data["x"],
-            "y": data["y"],
-            "mode": "markers",
-            "type": "scatter",
-            "marker": {
-                "color": umap_data["Cluster"].tolist(),
-                "size": 5,
-                # "showscale": True,
-                "colorscale": "Viridis",
-            },
-            "text": umap_data["Cluster"].tolist(),
-            "hoverinfo": "text",
-        }],
+        "data": [
+            {
+                "x": data["x"],
+                "y": data["y"],
+                "mode": "markers",
+                "type": "scatter",
+                "marker": {
+                    # "showscale": True,
+                    "color": custom_color,
+                    "size": 5,
+                    "opacity": 0.6,
+                    "colorscale": custom_colorscale
+                },
+                "text": custom_text,
+                "hovertemplate": custom_hovertemplate,
+                "hoverinfo": "x+y+text",
+            }
+        ],
         "layout": layout,
-
+        "tfs": p_values.columns.tolist(),
+        "selected_tf": selected_tf_name,
     }
 
     return jsonify(graph_data)
@@ -196,9 +249,7 @@ def run_umap():
 @main.app_errorhandler(404)
 def not_found_error(error):
     return (
-        render_template("error.html",
-                        error_code=404,
-                        error_message="Page Not Found"),
+        render_template("error.html", error_code=404, error_message="Page Not Found"),
         404,
     )
 
@@ -208,9 +259,7 @@ def not_found_error(error):
 def internal_error(error):
     return (
         render_template(
-            "error.html",
-            error_code=500,
-            error_message="Internal Server Error"
+            "error.html", error_code=500, error_message="Internal Server Error"
         ),
         500,
     )
@@ -220,7 +269,5 @@ def internal_error(error):
 @main.route("/trigger_error")
 def trigger_custom_error(error_message="Error", error_code="Error Code"):
     return render_template(
-        "error.html",
-        error_code=error_code,
-        error_message=error_message
+        "error.html", error_code=error_code, error_message=error_message
     )

@@ -3,12 +3,9 @@ from statsmodels.stats.multitest import multipletests
 
 
 def bh_frd_correction(p_value_file: str, alpha=0.05) -> pd.DataFrame:
-    p_value_df = pd.read_csv(p_value_file, sep="\t")
+    p_value_df = pd.read_csv(p_value_file, sep="\t", index_col=0)
 
     p_value_df.dropna(axis=1, how="all", inplace=True)
-
-    # Make first column the index
-    p_value_df.set_index("Unnamed: 0", inplace=True)
 
     # Create a dataframe of shape p_value_df with all NaN values
     df_reject = pd.DataFrame(index=p_value_df.index, columns=p_value_df.columns)

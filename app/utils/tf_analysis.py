@@ -6,7 +6,7 @@ import requests
 from scipy.special import erf
 from joblib import Parallel, delayed
 
-# This is using all n's and k's
+# This analysis using single n and all k's
 
 # Path to the "uploads" folder (use absolute path for robustness)
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
@@ -29,26 +29,22 @@ def get_sd(max_target: int, total_genes: int, iters: int):
     print("Distribution file does not exist. Now we have to generate it.")
 
     # n = total_genes  # Sampling size for random distribution
-    sd_dist = np.zeros((max_target, total_genes - max_target))
+    ranks = np.linspace(start=1, stop=total_genes, num=total_genes)
+    ranks = (ranks - 0.5) / total_genes
 
-    for i in range(total_genes - max_target):
-        new_n = max_target + i
-        ranks = np.linspace(start=1, stop=new_n, num=new_n)
-        ranks = (ranks - 0.5) / new_n
-
-        dist = Parallel(n_jobs=-1, verbose=10, backend="multiprocessing")(
-            delayed(distribution_worker)(max_target, ranks) for _ in range(iters)
-        )
-        sd_dist[:, i] = np.std(np.array(dist).T, axis=1)
+    dist = Parallel(n_jobs=-1, verbose=2, backend="multiprocessing")(
+        delayed(distribution_worker)(max_target, ranks) for _ in range(iters)
+    )
+    sd_dist = np.std(np.array(dist).T, axis=1)
     np.savez_compressed(file=sd_file, distribution=sd_dist)
     return sd_dist
 
 
 def sample_worker(
-    sample: pd.DataFrame,
-    prior_network: pd.DataFrame,
-    sd: np.array,
-    max_target: int,
+        sample: pd.DataFrame,
+        prior_network: pd.DataFrame,
+        sd: np.array,
+        max_target: int,
 ):
     sample.dropna(inplace=True)
     sample["rank"] = sample.rank(ascending=False)
@@ -88,9 +84,7 @@ def sample_worker(
     valid_indices = ~np.isnan(prior_network["rs"])
 
     z_vals = (np.abs(prior_network.loc[valid_indices, "rs"]) - 0.5) / sd[
-        prior_network.loc[valid_indices, "valid_target"].astype(int) - 1,
-        len(sample) - max_target,
-    ]
+        prior_network.loc[valid_indices, "valid_target"].astype(int) - 1]
     p_vals = 1 + erf(z_vals / np.sqrt(2))
 
     # Adjust sign based on 'rs' values
@@ -103,14 +97,14 @@ def sample_worker(
 
 
 def run_analysis(
-    tfs,
-    gene_exp: pd.DataFrame,
-    prior_network: pd.DataFrame,
-    sd_dist: np.array,
-    max_target: int,
+        tfs,
+        gene_exp: pd.DataFrame,
+        prior_network: pd.DataFrame,
+        sd_dist: np.array,
+        max_target: int,
 ) -> pd.DataFrame:
     gene_exp = gene_exp.T
-    parallel = Parallel(n_jobs=-1, verbose=5, backend="multiprocessing")
+    parallel = Parallel(n_jobs=-1, verbose=2, backend="multiprocessing")
     output = parallel(
         delayed(sample_worker)(pd.DataFrame(row), prior_network, sd_dist, max_target)
         for idx, row in gene_exp.iterrows()
@@ -208,9 +202,6 @@ def read_data(p_file: str, g_file: str):
         thresh=int(len(gene_exp.columns) * 0.05)
     )
 
-    # Get only first 10 columns
-    gene_exp = gene_exp.iloc[:, :10]
-
     return prior_network, gene_exp
 
 
@@ -222,12 +213,3 @@ def get_pvalues(prior_file: str, gene_file: str, iters: int) -> pd.DataFrame:
         return p_values
     except Exception as e:
         raise Exception(f"Failed to run the analysis: {e}")
-
-    # prior_net, gene_e = read_data(prior_file, gene_file)
-    #
-    # p_values = main(prior_net, gene_e, iters)
-    #
-    # # Remove columns with all NaN values
-    # p_values.dropna(axis=1, how="all", inplace=True)
-    #
-    # return p_values

@@ -5,9 +5,9 @@
 
 {% block content %}
     <div style="display: flex; width: 100%;">
-        <div id="scatterPlot" style="width: 85%; height: 92vh;"></div>
+        <div class="outline_div" id="scatterPlot" style="width: 85%; height: 92vh;"></div>
 
-        <div id="plotSettings" style="width: 15%; padding: 10px;">
+        <div class="outline_div"  id="plotSettings" style="width: 15%; margin: 5px;">
 
             <h3>Plot Settings</h3>
             <div>
@@ -19,19 +19,12 @@
             </div>
 
             <h3>TF Analysis Settings</h3>
-{#            <div>#}
-{#                <label for="tf_name">Transcription Factor:</label>#}
-{#                <select name="tf_name" id="tf_name">#}
+            <div>
+                <label for="tf_name">Transcription Factor:</label>
+                <select name="tf_name" id="tf_name">
 {#                    <option value="STAT1">STAT1</option>#}
-{#                    <option value="STAT3">STAT3</option>#}
-{#                    <option value="STAT5">STAT5</option>#}
-{#                    <option value="STAT6">STAT6</option>#}
-{#                    <option value="STAT2">STAT2</option>#}
-{#                    <option value="STAT4">STAT4</option>#}
-{#                    <option value="STAT7">STAT7</option>#}
-{#                    <option value="STAT8">STAT8</option>#}
-{#                </select>#}
-{#            </div>#}
+                </select>
+            </div>
 
             <div>
                 <form id="plotForm">
