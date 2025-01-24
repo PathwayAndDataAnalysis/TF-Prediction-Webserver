@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 # This analysis using single n and all k's
 
 # Path to the "uploads" folder (use absolute path for robustness)
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 
 
 def distribution_worker(max_target: int, ranks: np.array):
@@ -20,7 +20,7 @@ def distribution_worker(max_target: int, ranks: np.array):
 
 def get_sd(max_target: int, total_genes: int, iters: int):
     sd_file = f"SD_anal_{max_target}_{total_genes}_{iters}.npz"
-    sd_file = os.path.join(UPLOADS_DIR, sd_file)
+    sd_file = os.path.join(UPLOAD_DIR, sd_file)
 
     if os.path.isfile(sd_file):
         print("Distribution file exists. Now we have to read it.")
@@ -41,10 +41,10 @@ def get_sd(max_target: int, total_genes: int, iters: int):
 
 
 def sample_worker(
-        sample: pd.DataFrame,
-        prior_network: pd.DataFrame,
-        sd: np.array,
-        max_target: int,
+    sample: pd.DataFrame,
+    prior_network: pd.DataFrame,
+    sd: np.array,
+    max_target: int,
 ):
     sample.dropna(inplace=True)
     sample["rank"] = sample.rank(ascending=False)
@@ -84,7 +84,8 @@ def sample_worker(
     valid_indices = ~np.isnan(prior_network["rs"])
 
     z_vals = (np.abs(prior_network.loc[valid_indices, "rs"]) - 0.5) / sd[
-        prior_network.loc[valid_indices, "valid_target"].astype(int) - 1]
+        prior_network.loc[valid_indices, "valid_target"].astype(int) - 1
+    ]
     p_vals = 1 + erf(z_vals / np.sqrt(2))
 
     # Adjust sign based on 'rs' values
@@ -97,11 +98,11 @@ def sample_worker(
 
 
 def run_analysis(
-        tfs,
-        gene_exp: pd.DataFrame,
-        prior_network: pd.DataFrame,
-        sd_dist: np.array,
-        max_target: int,
+    tfs,
+    gene_exp: pd.DataFrame,
+    prior_network: pd.DataFrame,
+    sd_dist: np.array,
+    max_target: int,
 ) -> pd.DataFrame:
     gene_exp = gene_exp.T
     parallel = Parallel(n_jobs=-1, verbose=2, backend="multiprocessing")
@@ -138,7 +139,7 @@ def main(prior_network: pd.DataFrame, gene_exp: pd.DataFrame, iters: int):
 
 def read_mouse_to_human_mapping_file():
     mth_file = "mouse_to_human.tsv"
-    mth_file_path = os.path.join(UPLOADS_DIR, mth_file)
+    mth_file_path = os.path.join(UPLOAD_DIR, mth_file)
 
     if os.path.isfile(mth_file_path):
         print("Mouse to human mapping file exists. Let's read")
@@ -160,8 +161,8 @@ def read_mouse_to_human_mapping_file():
     return pd.read_csv(mth_file_path, sep="\t")
 
 
-def read_data(p_file: str, g_file: str):
-    p_file_path = os.path.join(UPLOADS_DIR, p_file)
+def read_data(p_file: str, g_file: str, upload_dir):
+    p_file_path = os.path.join(upload_dir, p_file)
 
     prior_network = pd.read_csv(
         p_file_path,
@@ -179,7 +180,7 @@ def read_data(p_file: str, g_file: str):
     ).dropna()
     prior_network = prior_network.reset_index(drop=True)
 
-    g_file_path = os.path.join(UPLOADS_DIR, g_file)
+    g_file_path = os.path.join(upload_dir, g_file)
     gene_exp = pd.read_csv(g_file_path, sep="\t", index_col=0)
 
     # Mouse to human Mapping process
@@ -205,11 +206,12 @@ def read_data(p_file: str, g_file: str):
     return prior_network, gene_exp
 
 
-def get_pvalues(prior_file: str, gene_file: str, iters: int) -> pd.DataFrame:
+def get_pvalues(prior_file: str, gene_file: str, iters: int, upload_dir) -> pd.DataFrame:
     try:
-        prior_net, gene_e = read_data(prior_file, gene_file)
+        prior_net, gene_e = read_data(prior_file, gene_file, upload_dir)
         p_values = main(prior_net, gene_e, iters)
         p_values.dropna(axis=1, how="all", inplace=True)
         return p_values
+
     except Exception as e:
         raise Exception(f"Failed to run the analysis: {e}")

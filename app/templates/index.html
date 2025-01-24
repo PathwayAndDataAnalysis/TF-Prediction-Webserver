@@ -4,43 +4,55 @@
 
 {% block content %}
 
-    <h3>Transcription Factor Activity Prediction Inputs</h3>
-    <form action="/run_analysis" method="post" enctype="multipart/form-data">
+    <h3>Want to see your previous result?</h3>
+    <form action="/result" method="post" enctype="multipart/form-data">
         <div class="outline_div">
             <div>
-                <label for="gene_expression_data">Gene Expression:</label>
-                <input type="file" name="gene_expression_data" id="gene_expression_data">
-            </div>
-
-            <div>
-                <label for="prior_data">Prior Data File:</label>
-                <input type="file" name="prior_data" id="prior_data">
-            </div>
-
-            <div>
-                <label for="iters">Iterations: </label>
-                <input type="number" name="iters" id="iters" value="100000">
-            </div>
-
-            <div>
-                <input type="submit" value="Run Analysis" class="my_button">
+                <label for="results">Session ID:</label>
+                <input type="text" name="session_id" id="session_id" style="width: 400px;">
             </div>
         </div>
+        <input type="submit" value="See Result" class="my_button">
     </form>
 
+    {#    <h3>Transcription Factor Activity Prediction Inputs</h3>#}
+    {#    <form action="/run_analysis" method="post" enctype="multipart/form-data">#}
+    {#        <div class="outline_div">#}
+    {#            <div>#}
+    {#                <label for="gene_expression_data">Gene Expression:</label>#}
+    {#                <input type="file" name="gene_expression_data" id="gene_expression_data">#}
+    {#            </div>#}
+    {##}
+    {#            <div>#}
+    {#                <label for="prior_data">Prior Data File:</label>#}
+    {#                <input type="file" name="prior_data" id="prior_data">#}
+    {#            </div>#}
+    {##}
+    {#            <div>#}
+    {#                <label for="iters">Iterations: </label>#}
+    {#                <input type="number" name="iters" id="iters" value="100000">#}
+    {#            </div>#}
+    {##}
+    {#            <div>#}
+    {#                <input type="submit" value="Run Analysis" class="my_button">#}
+    {#            </div>#}
+    {#        </div>#}
+    {#    </form>#}
 
-    <h3>UMAP Pipeline parameters</h3>
+
+    <h3>Pipeline parameters</h3>
     <form action="/umap" method="post" enctype="multipart/form-data">
 
         <div class="outline_div">
-            <p>Data:</p>
             <div>
-                <label for="data_matrix">Data Matrix:</label>
+                <label for="data_matrix">Gene Expression Data:</label>
                 <input type="file" name="data_matrix" id="data_matrix">
             </div>
 
+            <br/>
+            <p>FOR UMAP:</p>
             <div>
-                <label for="meta_data">Meta Data:</label>
+                <label for="meta_data">Meta Data for UMAP:</label>
                 <input type="file" name="meta_data" id="meta_data">
             </div>
 
@@ -50,6 +62,18 @@
                     <option value="human">Human</option>
                     <option value="mouse">Mouse</option>
                 </select>
+            </div>
+
+            <br/>
+            <p>FOR ANALYSIS:</p>
+            <div>
+                <label for="prior_data">Prior Data File:</label>
+                <input type="file" name="prior_data" id="prior_data">
+            </div>
+
+            <div>
+                <label for="iters">Iterations: </label>
+                <input type="number" name="iters" id="iters" value="1000">
             </div>
         </div>
 
@@ -128,7 +152,7 @@
             </div>
         </div>
 
-        <input type="submit" value="Run UMAP" class="my_button">
+        <input type="submit" value="Run UMAP and Analysis" class="my_button">
     </form>
 
 {% endblock %}

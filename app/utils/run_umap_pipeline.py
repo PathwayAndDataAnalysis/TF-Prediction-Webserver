@@ -3,9 +3,6 @@ import pandas as pd
 import os
 from pathlib import Path
 
-# Path to the "uploads" folder (use absolute path for robustness)
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-
 
 def run_umap_pipeline(
         data_matrix_filename: str,
@@ -24,9 +21,13 @@ def run_umap_pipeline(
         n_neighbors: int = 15,
         min_dist: float = 0.1,
         metric: str = "cosine",
-) -> None:
-    data_matrix_path = os.path.join(UPLOADS_DIR, data_matrix_filename)
-    meta_data_path = os.path.join(UPLOADS_DIR, meta_data_filename)
+        uuid_folder_name: str = None,
+) -> pd.DataFrame:
+    # Path to the "uploads" folder (use absolute path for robustness)
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads/" + uuid_folder_name)
+
+    data_matrix_path = os.path.join(upload_dir, data_matrix_filename)
+    meta_data_path = os.path.join(upload_dir, meta_data_filename)
 
     if not Path(data_matrix_path).exists():
         raise FileNotFoundError(f"File not found: {data_matrix_path}")
@@ -56,11 +57,13 @@ def run_umap_pipeline(
 
     # Filter mitochondrial genes
     print("Filtering mitochondrial genes...")
-    if qc_filter == 'on':
-        adata.var['mt'] = adata.var_names.str.startswith('MT-')
-        sc.pp.calculate_qc_metrics(adata, qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)
+    if qc_filter == "on":
+        adata.var["mt"] = adata.var_names.str.startswith("MT-")
+        sc.pp.calculate_qc_metrics(
+            adata, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True
+        )
         adata = adata[adata.obs.pct_counts_mt < qc_filter_value, :]
-        del adata.var['mt']
+        del adata.var["mt"]
 
     # Normalize data
     print("Normalizing data...")
@@ -93,5 +96,7 @@ def run_umap_pipeline(
         adata.obs[cluster_column] if cluster_column in adata.obs else None
     )
 
-    umap_output_path = os.path.join(UPLOADS_DIR, "umap_coordinates.csv")
-    umap_df.to_csv(umap_output_path)
+    # # umap_output_path = os.path.join(upload_dir, "umap_coordinates.csv")
+    # umap_output_path = os.path.join(upload_dir, "umap_coordinates.csv")
+    # umap_df.to_csv(umap_output_path)
+    return umap_df

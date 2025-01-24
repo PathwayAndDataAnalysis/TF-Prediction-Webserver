@@ -2,7 +2,7 @@
 
 body {
     font-family: Arial, sans-serif;
-    margin: 5px;
+    margin: 15px;
     padding: 5px;
     background-color: #f4f4f9;
 }
@@ -29,7 +29,7 @@ h2 {
 
 .outline_div {
     margin: 5px;
-    padding: 5px;
+    padding: 15px;
     background-color: #fff;
     border: 1px solid #ccc;
     border-radius: 10px;

@@ -1,10 +1,11 @@
-// app/static/js/index.js
-
 $(document).ready(function () {
     updatePlot();
 });
 
 function updatePlot() {
+
+    const sessionId = document.getElementById('session_id').value;
+
     // Get data from plot_type dropdown
     const plotType = document.getElementById('plot_type').value;
 
@@ -17,7 +18,8 @@ function updatePlot() {
         body: JSON.stringify(
             {
                 plot_type: plotType,
-                tf_name: document.getElementById('tf_name').value
+                tf_name: document.getElementById('tf_name').value,
+                session_id: sessionId
             }
         )
     })
