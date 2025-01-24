@@ -10,7 +10,8 @@ from app.utils.read_data import (
     read_bh_reject,
 )
 from app.utils.run_umap_pipeline import run_umap_pipeline
-from app.utils.tf_analysis import get_pvalues
+# from app.utils.tf_analysis import get_pvalues
+from app.utils.run_analysis import get_pvalues
 from app.utils.utils import map_cluster_value, allowed_file
 
 main = Blueprint("main", __name__)
