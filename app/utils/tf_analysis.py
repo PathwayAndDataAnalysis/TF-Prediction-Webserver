@@ -32,7 +32,7 @@ def get_sd(max_target: int, total_genes: int, iters: int):
     ranks = np.linspace(start=1, stop=total_genes, num=total_genes)
     ranks = (ranks - 0.5) / total_genes
 
-    dist = Parallel(n_jobs=-1, verbose=2, backend="multiprocessing")(
+    dist = Parallel(n_jobs=-1, verbose=5, backend="multiprocessing")(
         delayed(distribution_worker)(max_target, ranks) for _ in range(iters)
     )
     sd_dist = np.std(np.array(dist).T, axis=1)

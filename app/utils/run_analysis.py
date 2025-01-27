@@ -32,14 +32,14 @@ def get_sd(max_target: int, total_genes: int, iters: int):
     print("Distribution file does not exist. Now we have to generate it.")
 
     # n = 10_000  # Sampling size for random distribution
-    n = total_genes  # Sampling size for random distribution
-    ranks = np.linspace(start=1, stop=total_genes, num=n)
+    # n = total_genes  # Sampling size for random distribution
+    ranks = np.linspace(start=1, stop=total_genes, num=total_genes)
     ranks = (ranks - 0.5) / total_genes
 
     dist = Parallel(n_jobs=-1, verbose=5, backend="multiprocessing")(
         delayed(distribution_worker)(max_target, ranks) for _ in range(iters)
     )
-    dist = np.array(dist).T
+    dist = np.std(np.array(dist).T, axis=1)
     np.savez_compressed(file=sd_file, distribution=dist)
     return dist
 
@@ -80,22 +80,23 @@ def sample_worker(
                     acti_rs += np.average(sample.loc[targets[i], "rev_rank"])
 
         rs = np.min([acti_rs, inhi_rs])
-        rs = rs / len(targets)  # Average rank-sum
+        rs = rs / valid_targets  # Average rank-sum
+        prior_network.loc[tf_id, "rs"] = rs if acti_rs < inhi_rs else -rs
+        prior_network.loc[tf_id, "valid_target"] = valid_targets
 
-        prior_network.loc[tf_id, "rs"] = rs if acti_rs < inhi_rs else -1 * rs
+    # Identify non-NaN indices for 'rs' to filter the relevant rows
+    valid_indices = ~np.isnan(prior_network["rs"])
 
-    # Counting how many times the rs is less than the random distribution
-    for idx1, row1 in prior_network.iterrows():
-        n_dist = distribution[row1["updown"] - 1]
-        count = (
-                np.sum(np.abs(n_dist) <= np.abs(row1["rs"])) + 1
-        )  # Add 1 to avoid zero division
+    z_vals = (np.abs(prior_network.loc[valid_indices, "rs"]) - 0.5) / distribution[
+        prior_network.loc[valid_indices, "valid_target"].astype(int) - 1
+        ]
+    p_vals = 1 + erf(z_vals / np.sqrt(2))
 
-        if row1["rs"] < 0:
-            count = -1 * count
+    # Adjust sign based on 'rs' values
+    p_vals = np.where(prior_network.loc[valid_indices, "rs"] > 0, p_vals, -p_vals)
 
-        prior_network.loc[idx1, "count"] = count
-        prior_network.loc[idx1, "p-value"] = count / iters
+    prior_network["p-value"] = np.nan
+    prior_network.loc[valid_indices, "p-value"] = p_vals
 
     return prior_network["p-value"].values
 
@@ -124,9 +125,9 @@ def main(prior_network: pd.DataFrame, gene_exp: pd.DataFrame, iters: int):
     prior_network = prior_network.groupby("tf").agg({"action": list, "target": list})
     prior_network["updown"] = prior_network["target"].apply(lambda x: len(x))
 
-    # max_target = np.max(prior_network["updown"])
+    max_target = np.max(prior_network["updown"])
     distribution = get_sd(
-        max_target=np.max(prior_network["updown"]),
+        max_target=max_target,
         total_genes=len(gene_exp),
         iters=iters,
     )
