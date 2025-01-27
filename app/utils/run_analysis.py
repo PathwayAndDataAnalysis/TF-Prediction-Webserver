@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 # This is using all n's and k's
 
 # Path to the "uploads" folder (use absolute path for robustness)
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 
 
 def distribution_worker(max_target: int, ranks: np.array):
@@ -23,7 +23,7 @@ def distribution_worker(max_target: int, ranks: np.array):
 
 def get_sd(max_target: int, total_genes: int, iters: int):
     sd_file = f"SD_anal_{max_target}_{total_genes}_{iters}.npz"
-    sd_file = os.path.join(UPLOADS_DIR, sd_file)
+    sd_file = os.path.join(UPLOAD_DIR, sd_file)
 
     if os.path.isfile(sd_file):
         print("Distribution file exists. Now we have to read it.")
@@ -50,6 +50,7 @@ def sample_worker(
         distribution: np.array,
         iters: int,
 ):
+    sample.dropna(inplace=True)
     sample["rank"] = sample.rank(ascending=False)
     sample["rank"] = (sample["rank"] - 0.5) / len(sample)
     sample["rev_rank"] = 1 - sample["rank"]
@@ -59,16 +60,24 @@ def sample_worker(
         targets = tf_row["target"]
         actions = tf_row["action"]
 
+        # Valid target counts and total targets should be greater than 3
+        valid_targets = len([t for t in targets if t in sample.index])
+        if len(targets) < 3 or valid_targets < 3:
+            prior_network.loc[tf_id, "rs"] = np.nan
+            prior_network.loc[tf_id, "valid_target"] = np.nan
+            continue
+
         acti_rs = 0
         inhi_rs = 0
 
         for i, action in enumerate(actions):
-            if action == 1:
-                acti_rs += sample.loc[targets[i], "rank"]
-                inhi_rs += sample.loc[targets[i], "rev_rank"]
-            else:
-                inhi_rs += sample.loc[targets[i], "rank"]
-                acti_rs += sample.loc[targets[i], "rev_rank"]
+            if targets[i] in sample.index:
+                if action == 1:
+                    acti_rs += np.average(sample.loc[targets[i], "rank"])
+                    inhi_rs += np.average(sample.loc[targets[i], "rev_rank"])
+                else:
+                    inhi_rs += np.average(sample.loc[targets[i], "rank"])
+                    acti_rs += np.average(sample.loc[targets[i], "rev_rank"])
 
         rs = np.min([acti_rs, inhi_rs])
         rs = rs / len(targets)  # Average rank-sum
@@ -95,13 +104,13 @@ def run_analysis(
         tfs,
         gene_exp: pd.DataFrame,
         prior_network: pd.DataFrame,
-        sd_dist: np.array,
+        distribution: np.array,
         iters: int,
-):
+) -> pd.DataFrame:
     gene_exp = gene_exp.T
     parallel = Parallel(n_jobs=-1, verbose=5, backend="multiprocessing")
     output = parallel(
-        delayed(sample_worker)(pd.DataFrame(row), prior_network, sd_dist, iters)
+        delayed(sample_worker)(pd.DataFrame(row), prior_network, distribution, iters)
         for idx, row in gene_exp.iterrows()
     )
     output = pd.DataFrame(output, columns=tfs, index=gene_exp.index)
@@ -115,9 +124,9 @@ def main(prior_network: pd.DataFrame, gene_exp: pd.DataFrame, iters: int):
     prior_network = prior_network.groupby("tf").agg({"action": list, "target": list})
     prior_network["updown"] = prior_network["target"].apply(lambda x: len(x))
 
-    max_target = np.max(prior_network["updown"])
-    sd_dist = get_sd(
-        max_target=max_target,
+    # max_target = np.max(prior_network["updown"])
+    distribution = get_sd(
+        max_target=np.max(prior_network["updown"]),
         total_genes=len(gene_exp),
         iters=iters,
     )
@@ -126,14 +135,14 @@ def main(prior_network: pd.DataFrame, gene_exp: pd.DataFrame, iters: int):
         tfs=prior_network.index,
         gene_exp=gene_exp,
         prior_network=prior_network,
-        sd_dist=sd_dist,
+        distribution=distribution,
         iters=iters,
     )
 
 
 def read_mouse_to_human_mapping_file():
     mth_file = "mouse_to_human.tsv"
-    mth_file_path = os.path.join(UPLOADS_DIR, mth_file)
+    mth_file_path = os.path.join(UPLOAD_DIR, mth_file)
 
     if os.path.isfile(mth_file_path):
         print("Mouse to human mapping file exists. Let's read")
