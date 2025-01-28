@@ -88,7 +88,8 @@ def run_umap_pipeline(
     sc.tl.umap(adata, min_dist=min_dist)
 
     print("Saving UMAP coordinates...")
-    cluster_column = "seurat_clusters"
+    # cluster_column = "seurat_clusters"
+    cluster_column = "orig.ident"
 
     # Save the UMAP coordinates
     umap_df = adata.obsm.to_df()

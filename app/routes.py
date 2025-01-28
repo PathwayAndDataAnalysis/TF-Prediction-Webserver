@@ -6,6 +6,7 @@ import os
 from app.utils.benjamini_hotchberg import bh_frd_correction
 from app.utils.read_data import (
     read_umap_coordinates_file,
+    read_meta_data_file,
     read_pvalues_file,
     read_bh_reject,
 )
@@ -40,64 +41,64 @@ def view_plot_session_id(session_id):
     return render_template("plot.html", session_id=session_id)
 
 
-@main.route("/run_analysis", methods=["GET", "POST"])
-def run_tf_analysis():
-    if request.method == "POST":
-        # Check if the UPLOADS_DIR exists, if not create that folder
-        if not os.path.exists(UPLOAD_DIR):
-            os.makedirs(UPLOAD_DIR)
-
-        if ("gene_expression_data" not in request.files
-                or "prior_data" not in request.files
-        ):
-            return "No file part"
-
-        gene_expression_file = request.files["gene_expression_data"]
-        prior_data_file = request.files["prior_data"]
-
-        if gene_expression_file.filename == "" or prior_data_file.filename == "":
-            return "No selected file"
-
-        if (
-                gene_expression_file
-                and allowed_file(gene_expression_file.filename)
-                and prior_data_file
-                and allowed_file(prior_data_file.filename)
-        ):
-            gene_expression_filename = os.path.join(
-                UPLOAD_DIR, gene_expression_file.filename
-            )
-            prior_data_filename = os.path.join(UPLOAD_DIR, prior_data_file.filename)
-
-            gene_expression_file.save(gene_expression_filename)
-            prior_data_file.save(prior_data_filename)
-
-            # Now Run the analysis
-            iters = int(request.form["iters"])
-            try:
-                p_values = get_pvalues(
-                    prior_data_filename.split("/")[-1],
-                    gene_expression_filename.split("/")[-1],
-                    iters,
-                )
-                p_file_path = os.path.join(UPLOAD_DIR, "p_values.tsv")
-                p_values.to_csv(p_file_path, sep="\t")
-
-                # Now run the Benjamini-Hochberg FDR correction
-                reject = bh_frd_correction(p_file_path, alpha=0.05)
-                reject_file_path = os.path.join(UPLOAD_DIR, "reject.tsv")
-                reject.to_csv(reject_file_path, sep="\t")
-
-                # Pass p_values and reject to the plot.html template
-                # return render_template('plot.html', p_values=p_values, reject=reject)
-                return render_template("plot.html")
-
-            except Exception as e:
-                return trigger_custom_error(str(e))
-
-        return trigger_custom_error("Invalid file type")
-    else:
-        return request.method + " method not allowed"
+# @main.route("/run_analysis", methods=["GET", "POST"])
+# def run_tf_analysis():
+#     if request.method == "POST":
+#         # Check if the UPLOADS_DIR exists, if not create that folder
+#         if not os.path.exists(UPLOAD_DIR):
+#             os.makedirs(UPLOAD_DIR)
+#
+#         if ("gene_expression_data" not in request.files
+#                 or "prior_data" not in request.files
+#         ):
+#             return "No file part"
+#
+#         gene_expression_file = request.files["gene_expression_data"]
+#         prior_data_file = request.files["prior_data"]
+#
+#         if gene_expression_file.filename == "" or prior_data_file.filename == "":
+#             return "No selected file"
+#
+#         if (
+#                 gene_expression_file
+#                 and allowed_file(gene_expression_file.filename)
+#                 and prior_data_file
+#                 and allowed_file(prior_data_file.filename)
+#         ):
+#             gene_expression_filename = os.path.join(
+#                 UPLOAD_DIR, gene_expression_file.filename
+#             )
+#             prior_data_filename = os.path.join(UPLOAD_DIR, prior_data_file.filename)
+#
+#             gene_expression_file.save(gene_expression_filename)
+#             prior_data_file.save(prior_data_filename)
+#
+#             # Now Run the analysis
+#             iters = int(request.form["iters"])
+#             try:
+#                 p_values = get_pvalues(
+#                     prior_data_filename.split("/")[-1],
+#                     gene_expression_filename.split("/")[-1],
+#                     iters,
+#                 )
+#                 p_file_path = os.path.join(UPLOAD_DIR, "p_values.tsv")
+#                 p_values.to_csv(p_file_path, sep="\t")
+#
+#                 # Now run the Benjamini-Hochberg FDR correction
+#                 reject = bh_frd_correction(p_file_path, alpha=0.05)
+#                 reject_file_path = os.path.join(UPLOAD_DIR, "reject.tsv")
+#                 reject.to_csv(reject_file_path, sep="\t")
+#
+#                 # Pass p_values and reject to the plot.html template
+#                 # return render_template('plot.html', p_values=p_values, reject=reject)
+#                 return render_template("plot.html")
+#
+#             except Exception as e:
+#                 return trigger_custom_error(str(e))
+#
+#         return trigger_custom_error("Invalid file type")
+#     else:
+#         return request.method + " method not allowed"
 
 
 @main.route("/umap", methods=["GET", "POST"])
@@ -214,30 +215,48 @@ def update_plot():
     selected_plot_type = request.json["plot_type"]
     selected_tf_name = request.json["tf_name"]
     session_id = request.json["session_id"]
+    meta_data_cluster = request.json["meta_data_cluster"]
 
     print("selected_plot_type: ", selected_plot_type)
     print("selected_tf_name: ", selected_tf_name)
     print("session_id: ", session_id)
+    print("meta_data_cluster: ", meta_data_cluster)
 
     upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads/" + session_id)
 
     umap_data = read_umap_coordinates_file(upload_dir)
+    meta_data = read_meta_data_file(upload_dir)
     p_values = read_pvalues_file(upload_dir)
+
+    # Change the cluster stype in uma_data based on meta_data_cluster
+    if meta_data_cluster in meta_data.columns.tolist():
+        print("Changing the cluster type in umap_data based on meta_data_cluster")
+        umap_data["Cluster"] = meta_data[meta_data_cluster]
 
     if selected_tf_name == "Select Transcription Factor":
         selected_tf_name = ""
 
     true_false_count = {True: 0, False: 0, "NaN": 0}
-    if selected_tf_name:
+    if selected_tf_name:  # Transcription Factor is selected
         bh_reject = read_bh_reject(upload_dir)
 
         # Count how many True, False and NaN values are there in the selected TF column and save it to dictionary
         true_false_count = bh_reject[selected_tf_name].value_counts().to_dict()
         true_false_count["NaN"] = int(bh_reject[selected_tf_name].isna().sum())
 
-        umap_data[selected_tf_name] = bh_reject[selected_tf_name]
+        umap_data[selected_tf_name] = bh_reject[selected_tf_name].astype(object)
+        umap_data["pvalues"] = p_values[selected_tf_name]
 
-        color_map = {True: "green", False: "red", np.nan: "gray"}
+        # Finding positive and negative values of the TF from the pvalues column and replace them with "A" and "I" respectively in the umap_data[selected_tf_name] column
+        mask = umap_data[selected_tf_name] == True
+        umap_data.loc[mask, selected_tf_name] = np.where(umap_data.loc[mask, "pvalues"] < 0, "I", "A")
+
+        # color_map = {True: "green", False: "red", np.nan: "gray"}
+
+        color_map = {"A": "red",  # TF is significantly activated
+                     "I": "blue",  # TF is significantly inactivated
+                     False: "gray",
+                     np.nan: "gray"}  # Both not significant and NaN's are gary in color. We will treat both as the same
         umap_data[selected_tf_name] = umap_data[selected_tf_name].map(color_map)
 
     data = (
@@ -311,6 +330,7 @@ def update_plot():
         "layout": layout,
         "tfs": p_values.columns.tolist(),
         "selected_tf": selected_tf_name,
+        "meta_data_cluster": meta_data.columns.tolist()
     }
 
     return jsonify(graph_data)

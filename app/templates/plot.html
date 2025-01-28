@@ -25,11 +25,39 @@
                 </select>
             </div>
 
+            <br/>
+
+            <div id="select_meta_data_cluster">
+                <label for="meta_data_cluster">Select Meta Data Cluster:</label>
+                <select name="meta_data_cluster" id="meta_data_cluster">
+                </select>
+            </div>
+
             <div>
                 <form id="plotForm">
                     <input type="hidden" id="session_id" value="{{ session_id }}">
                     <button type="button" onclick="updatePlot()" class="my_button">Update Plot</button>
                 </form>
+            </div>
+
+            <div id="plot_info" style="display: none;">
+                <p>Note: Active - Red and Inactive - Blue</p>
+
+                <div>
+                    <input type="checkbox" id="hide_insignificant" name="hide_insignificant">
+                    <label for="hide_insignificant">Hide Insignificant Cells</label>
+                </div>
+
+                <div>
+                    <input type="checkbox" id="hide_active" name="hide_active">
+                    <label for="hide_active">Hide Active Cells</label>
+                </div>
+
+                <div>
+                    <input type="checkbox" id="hide_inactive" name="hide_inactive">
+                    <label for="hide_inactive">Hide Inactive Cells</label>
+                </div>
+
             </div>
         </div>
     </div>

@@ -10,6 +10,13 @@ def read_umap_coordinates_file(upload_dir):
     return umap_df
 
 
+def read_meta_data_file(upload_dir):
+    meta_data_path = os.path.join(upload_dir, "meta_data.tsv")
+    print(f"Reading meta data file: {meta_data_path}")
+    meta_data = pd.read_csv(meta_data_path, sep="\t", index_col=0)
+    return meta_data
+
+
 def read_pvalues_file(upload_dir):
     # p_value_path = os.path.join(upload_dir, "p_values_9k.tsv")
     p_value_path = os.path.join(upload_dir, "p_values.tsv")  # Hardcoded pvalues file
