@@ -235,6 +235,8 @@ def update_plot():
         # Replace Cluster column in umap_data with the selected column from meta_data
         umap_data["Cluster"] = meta_data[meta_data_cluster].tolist()
 
+    # Clusterize the data
+
     if selected_tf_name == "Select Transcription Factor":
         selected_tf_name = ""
 
