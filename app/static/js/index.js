@@ -57,11 +57,6 @@ $(document).ready(function () {
 });
 
 function updatePlot() {
-    const sessionId = document.getElementById('session_id').value;
-
-    // Get data from plot_type dropdown
-    const plotType = document.getElementById('plot_type').value;
-
     const tfNameDropdown = document.getElementById('tf_name');
 
     const selectMetaDataCluster = document.getElementById('select_meta_data_cluster');
@@ -76,10 +71,10 @@ function updatePlot() {
         },
         body: JSON.stringify(
             {
-                plot_type: plotType,
+                session_id: document.getElementById('session_id').value,
+                plot_type: document.getElementById('plot_type').value,
                 tf_name: document.getElementById('tf_name').value,
                 meta_data_cluster: document.getElementById('meta_data_cluster').value,
-                session_id: sessionId
             }
         )
     })
