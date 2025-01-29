@@ -227,19 +227,19 @@ def update_plot():
     umap_data = read_umap_coordinates_file(upload_dir)
     meta_data = read_meta_data_file(upload_dir)
     p_values = read_pvalues_file(upload_dir)
+    bh_reject = read_bh_reject(upload_dir)
 
     # Change the cluster stype in uma_data based on meta_data_cluster
     if meta_data_cluster in meta_data.columns.tolist():
         print("Changing the cluster type in umap_data based on meta_data_cluster")
-        umap_data["Cluster"] = meta_data[meta_data_cluster]
+        # Replace Cluster column in umap_data with the selected column from meta_data
+        umap_data["Cluster"] = meta_data[meta_data_cluster].tolist()
 
     if selected_tf_name == "Select Transcription Factor":
         selected_tf_name = ""
 
     true_false_count = {True: 0, False: 0, "NaN": 0}
     if selected_tf_name:  # Transcription Factor is selected
-        bh_reject = read_bh_reject(upload_dir)
-
         # Count how many True, False and NaN values are there in the selected TF column and save it to dictionary
         true_false_count = bh_reject[selected_tf_name].value_counts().to_dict()
         true_false_count["NaN"] = int(bh_reject[selected_tf_name].isna().sum())
@@ -250,8 +250,6 @@ def update_plot():
         # Finding positive and negative values of the TF from the pvalues column and replace them with "A" and "I" respectively in the umap_data[selected_tf_name] column
         mask = umap_data[selected_tf_name] == True
         umap_data.loc[mask, selected_tf_name] = np.where(umap_data.loc[mask, "pvalues"] < 0, "I", "A")
-
-        # color_map = {True: "green", False: "red", np.nan: "gray"}
 
         color_map = {"A": "red",  # TF is significantly activated
                      "I": "blue",  # TF is significantly inactivated
@@ -307,6 +305,9 @@ def update_plot():
         else "<b>Cluster:</b> %{text}<br><b>PCA1:</b> %{x}<br><b>PCA2:</b> %{y}"
     )
 
+    # Count the True values in each column in bh_reject for each TF and create dictionary of TFs (column heading) with their count
+    tfs_with_count = bh_reject.apply(lambda x: x.value_counts().get(True, 0)).to_dict()
+
     # Define Plotly data and layout
     graph_data = {
         "data": [
@@ -328,7 +329,7 @@ def update_plot():
             }
         ],
         "layout": layout,
-        "tfs": p_values.columns.tolist(),
+        "tfs": tfs_with_count,
         "selected_tf": selected_tf_name,
         "meta_data_cluster": meta_data.columns.tolist()
     }

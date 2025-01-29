@@ -7,6 +7,8 @@ $(document).ready(function () {
     const hideInactive = document.getElementById('hide_inactive');
     const hideInsignificant = document.getElementById('hide_insignificant');
 
+    const sortTfs = document.getElementById('sort_tfs');
+
     hideActive.addEventListener('click', function () {
         console.log('hide active clicked');
         updatePlotData();
@@ -21,6 +23,37 @@ $(document).ready(function () {
         console.log('hide insignificant clicked');
         updatePlotData();
     });
+
+    sortTfs.addEventListener("change", function () {
+        console.log("Sort TFs changed");
+
+        let sortedTfs = originalData.tfs;
+        if (sortTfs.value === "sort_significance") {
+            console.log("Sorting by Significance Cell Count");
+            // sortedTfs = {TF1: 10, TF2: 20, TF3: 5}. I want to sort by values
+            sortedTfs = Object.fromEntries(
+                Object.entries(sortedTfs).sort(([, a], [, b]) => b - a)
+            );
+        }
+
+        // update the dropdown document.getElementById('tf_name'); with the sorted values
+        let tfNameDropdown = document.getElementById('tf_name');
+        console.log("Sorted TFs:", sortedTfs);
+        sortedTfs = Object.keys(sortedTfs);
+        console.log("Sorted TFs Keys:", sortedTfs);
+        sortedTfs.unshift('Select Transcription Factor');
+        tfNameDropdown.innerHTML = '';
+        for (let i = 0; i < sortedTfs.length; i++) {
+            const option = document.createElement('option');
+            option.value = sortedTfs[i];
+            option.text = sortedTfs[i];
+
+            if (sortedTfs[i] === originalData.selected_tf)
+                option.selected = true;
+
+            tfNameDropdown.appendChild(option);
+        }
+    })
 });
 
 function updatePlot() {
@@ -30,6 +63,7 @@ function updatePlot() {
     const plotType = document.getElementById('plot_type').value;
 
     const tfNameDropdown = document.getElementById('tf_name');
+
     const selectMetaDataCluster = document.getElementById('select_meta_data_cluster');
     const metaDataClusterDropDown = document.getElementById('meta_data_cluster');
     const plotInfo = document.getElementById('plot_info');
@@ -52,7 +86,7 @@ function updatePlot() {
         .then(response => response.json())
         .then(data => {
             console.log("data: ", data);
-            originalData = data.data; // Store the original data
+            originalData = data; // Store the original data
             Plotly.newPlot('scatterPlot', data.data, data.layout);
 
             // Update plot when window is resized
@@ -63,8 +97,18 @@ function updatePlot() {
                 });
             });
 
-            // Update tf_name elements dropdown
+            // Sort tfs based on the selected value
             let tfs = data.tfs;
+            if (document.getElementById('sort_tfs').value === "sort_significance") {
+                console.log("Sorting by Significance Cell Count");
+                // sortedTfs = {TF1: 10, TF2: 20, TF3: 5}. I want to sort by values
+                tfs = Object.fromEntries(
+                    Object.entries(tfs).sort(([, a], [, b]) => b - a)
+                );
+            }
+
+            // Get keys only of data.tfs
+            tfs = Object.keys(tfs);
 
             // Add Select Transcription Factor option in first position of tfs
             tfs.unshift('Select Transcription Factor');
@@ -121,7 +165,7 @@ function updatePlotData() {
     const hideInactive = document.getElementById('hide_inactive').checked;
     const hideInsignificant = document.getElementById('hide_insignificant').checked;
 
-    const filteredData = originalData.map(trace => {
+    const filteredData = originalData.data.map(trace => {
 
         console.log("Filtering data for trace:", trace);
 
@@ -157,7 +201,7 @@ function updatePlotData() {
 
     console.log("Plotting filtered data:", filteredData);
     // react relayouts the plot
-    Plotly.react('scatterPlot', filteredData, originalData[0].layout);
+    Plotly.react('scatterPlot', filteredData, originalData.data[0].layout);
 
     // // This is an alternative way to update the plot. But the toggling data is not working
     // Plotly.update('scatterPlot', {
