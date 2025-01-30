@@ -1,15 +1,15 @@
 {% extends "layout.html" %}
 
-{% block title %}Plot Page{% endblock %}
-
+{% block title %}Plot{% endblock %}
 
 {% block content %}
-    <div style="display: flex; width: 100%;">
-        <div class="outline_div" id="scatterPlot" style="width: 85%; height: 92vh;"></div>
 
-        <div class="outline_div" id="plotSettings" style="width: 15%; margin: 5px;">
+    <div class="flex flex-row w-full h-full">
+        <div class="flex-1 w-5/6 h m-1 border border-gray-300 rounded-md box-border" id="scatterPlot"></div>
 
-            <h3>Plot Settings</h3>
+        <div class="graph_settings" id="plotSettings">
+
+            <h3 class="text-2xl font-semibold mb-4">Plot Settings</h3>
             <div>
                 <label for="plot_type">Plot Type:</label>
                 <select name="plot_type" id="plot_type">
@@ -75,5 +75,7 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
 
 {% endblock %}
+

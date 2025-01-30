@@ -87,7 +87,7 @@ function updatePlot() {
             // Update plot when window is resized
             window.addEventListener('resize', function () {
                 Plotly.relayout('scatterPlot', {
-                    width: window.innerWidth * 0.82,
+                    width: window.innerWidth * 0.83,
                     height: window.innerHeight * 0.92
                 });
             });

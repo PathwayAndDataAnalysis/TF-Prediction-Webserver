@@ -313,38 +313,6 @@ def update_plot():
             }]
         )
 
-    # true_false_count = {True: 0, False: 0, "NaN": 0}
-    # if tf_name:  # Transcription Factor is selected
-    #     # Count how many True, False and NaN values are there in the selected TF column and save it to dictionary
-    #     true_false_count = bh_reject[tf_name].value_counts().to_dict()
-    #     true_false_count["NaN"] = int(bh_reject[tf_name].isna().sum())
-    #
-    #     umap_data[tf_name] = bh_reject[tf_name].astype(object)
-    #     umap_data["pvalues"] = p_values[tf_name]
-    #
-    #     # Finding positive and negative values of the TF from the pvalues column and replace them with "A" and "I" respectively in the umap_data[tf_name] column
-    #     mask = umap_data[tf_name] == True
-    #     umap_data.loc[mask, tf_name] = np.where(umap_data.loc[mask, "pvalues"] < 0, "I", "A")
-    #
-    #     color_map = {"A": "red",  # TF is significantly activated
-    #                  "I": "blue",  # TF is significantly inactivated
-    #                  False: "gray",
-    #                  np.nan: "gray"}  # Both not significant and NaN's are gary in color. We will treat both as the same
-    #     umap_data[tf_name] = umap_data[tf_name].map(color_map)
-
-    # # Change the plot umap or pca
-    # data = (
-    #     {
-    #         "x": umap_data["X_umap1"].tolist(),
-    #         "y": umap_data["X_umap2"].tolist(),
-    #     }
-    #     if plot_type == "umap"
-    #     else {
-    #         "x": umap_data["X_pca1"].tolist(),
-    #         "y": umap_data["X_pca2"].tolist(),
-    #     }
-    # )
-
     # Dynamic Title
     tf_name_and_counts = f" - {tf_name}  {true_false_count}" if tf_name else ""
     title = (
@@ -386,24 +354,6 @@ def update_plot():
 
     # Define Plotly data and layout
     graph_data = {
-        # "data": [
-        #     {
-        #         "x": data["x"],
-        #         "y": data["y"],
-        #         "mode": "markers",
-        #         "type": "scatter",
-        #         "marker": {
-        #             # "showscale": True,
-        #             "color": custom_color,
-        #             "size": 6,
-        #             "opacity": 0.5,
-        #             "colorscale": "Viridis",
-        #         },
-        #         "text": custom_text,
-        #         "hovertemplate": custom_hovertemplate,
-        #         "hoverinfo": "x+y+text",
-        #     }
-        # ],
         "data": cluster_coordinates,
         "layout": layout,
         "tfs": tfs_with_count,

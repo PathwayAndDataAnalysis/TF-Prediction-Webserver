@@ -3,17 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}My Flask App{% endblock %}</title>
+    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-<header>
-    <h3>TF Activity Prediction Webserver</h3>
+
+<header class="bg-blue-900 p-4 justify-center items-center flex">
+    <h3 class="text-white text-2xl font-bold">TF Activity Prediction Webserver</h3>
 </header>
+
 <main>
-    {% block content %}{% endblock %}
+    <div class="m-8">
+        {% block content %}{% endblock %}
+    </div>
 </main>
 <footer>
-{#    <p>&copy; 2024 Kisan Thapa</p>#}
+    {#        <p>&copy; 2024 Kisan Thapa</p>#}
 </footer>
 </body>
+
 </html>
