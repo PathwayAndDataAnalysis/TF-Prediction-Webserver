@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 
 import numpy as np
 from flask import Blueprint, render_template, request, jsonify
@@ -247,7 +248,7 @@ def get_plot_data():
         "hovermode": "closest",
     }
 
-    # Count the True values in each column in bh_reject for each TF and create dictionary of TFs (column heading) with their count
+    # Count the True values in each column in bh_reject
     tfs_with_count = bh_reject.apply(lambda x: x.value_counts().get(True, 0)).to_dict()
 
     # Define Plotly data and layout
@@ -278,6 +279,7 @@ def update_plot():
 
     umap_data = read_umap_coordinates_file(upload_dir)
     meta_data = read_meta_data_file(upload_dir)
+    bh_reject = read_bh_reject(upload_dir)
 
     # create a list dictionary of clusters with coordinates
     cluster_coordinates = []
@@ -287,7 +289,6 @@ def update_plot():
         print("Cluster type is changed to: ", meta_data_cluster)
         if meta_data_cluster and meta_data_cluster != "Select an option":
             umap_data["Cluster"] = meta_data[meta_data_cluster].tolist()
-            # Replace NaN's with "NaN" string if any
             umap_data["Cluster"] = umap_data["Cluster"].fillna("NaN")
 
         tf_name = ""
@@ -318,7 +319,6 @@ def update_plot():
                 })
     else:
         p_values = read_pvalues_file(upload_dir)
-        bh_reject = read_bh_reject(upload_dir)
 
         umap_data[tf_name] = bh_reject[tf_name].astype(object)
         umap_data["pvalues"] = p_values[tf_name]
@@ -326,15 +326,15 @@ def update_plot():
         mask = umap_data[tf_name] == True
         umap_data.loc[mask, tf_name] = np.where(umap_data.loc[mask, "pvalues"] < 0, "Inactive", "Active")
         umap_data[tf_name] = umap_data[tf_name].fillna("NaN")
-        umap_data[tf_name] = umap_data[tf_name].replace(False, "False")
+        umap_data[tf_name] = umap_data[tf_name].replace(False, "Insignificant")
 
         # Count Active, Inactive, False and NaN values in the TF column
-        true_false_count = umap_data[tf_name].value_counts().to_dict()
+        true_false_count = defaultdict(int, umap_data[tf_name].value_counts().to_dict())
 
         unique_clusters = {
             f"Active ({true_false_count['Active']})": "red",
             f"Inactive ({true_false_count['Inactive']})": "blue",
-            f"False ({true_false_count['False']})": "gray",
+            f"Insignificant ({true_false_count['False']})": "gray",
             f"NaN ({true_false_count['NaN']})": "gray"
         }
 
@@ -382,10 +382,15 @@ def update_plot():
         "hovermode": "closest",
     }
 
+    # Count the True values in each column in bh_reject
+    tfs_with_count = bh_reject.apply(lambda x: x.value_counts().get(True, 0)).to_dict()
+
     # Define Plotly data and layout
     graph_data = {
         "data": cluster_coordinates,
         "layout": layout,
+        "tfs": tfs_with_count,
+        "meta_data_cluster": meta_data.columns.tolist()
     }
 
     return jsonify(graph_data)

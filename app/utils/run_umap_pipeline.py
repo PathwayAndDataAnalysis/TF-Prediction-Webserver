@@ -97,7 +97,4 @@ def run_umap_pipeline(
         adata.obs[cluster_column] if cluster_column in adata.obs else None
     )
 
-    # # umap_output_path = os.path.join(upload_dir, "umap_coordinates.csv")
-    # umap_output_path = os.path.join(upload_dir, "umap_coordinates.csv")
-    # umap_df.to_csv(umap_output_path)
     return umap_df
