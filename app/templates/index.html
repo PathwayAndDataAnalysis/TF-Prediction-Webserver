@@ -4,7 +4,11 @@
 
 {% block content %}
 
-    <div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg">
+    <header class="bg-blue-900 p-4 justify-center items-center flex">
+        <h3 class="text-white text-2xl font-bold">TF Activity Prediction Webserver</h3>
+    </header>
+
+    <div class="flex-1 max-w-8xl mx-2 sm:mx-2 md:mx-4 lg:mx-16 xl:mx-48 2xl:mx-64 p-2 bg-white shadow-md rounded-lg">
         <h3 class="text-2xl font-semibold mb-4">Want to see your previous result?</h3>
         <form action="/result" method="post" enctype="multipart/form-data" class="mb-8">
             <div class="outline_div p-4 bg-gray-100 rounded-lg">

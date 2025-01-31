@@ -210,6 +210,57 @@ def run_umap():
         return trigger_custom_error("Invalid file type")
 
 
+@main.route("/get_plot_data", methods=["POST"])
+def get_plot_data():
+    print("/get_plot_data", request.json)
+    session_id = request.json["session_id"]
+    print("session_id: ", session_id)
+
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads/" + session_id)
+
+    umap_data = read_umap_coordinates_file(upload_dir)
+    bh_reject = read_bh_reject(upload_dir)
+    meta_data = read_meta_data_file(upload_dir)
+
+    # create a list dictionary of clusters with coordinates
+    cluster_coordinates = []
+
+    unique_clusters = umap_data["Cluster"].unique().tolist()
+
+    for cluster in unique_clusters:
+        cluster_coordinates.append({
+            "cluster": cluster,
+            "x": umap_data[umap_data["Cluster"] == cluster]["X_umap1"].tolist(),
+            "y": umap_data[umap_data["Cluster"] == cluster]["X_umap2"].tolist(),
+            "mode": "markers",
+            "type": "scatter",
+            "name": cluster,
+            "size": 6,
+            "opacity": 0.5,
+        })
+
+    # Define layout for the plot
+    layout = {
+        "title": "UMAP Plot",
+        "xaxis": {"title": "UMAP1"},
+        "yaxis": {"title": "UMAP2"},
+        "hovermode": "closest",
+    }
+
+    # Count the True values in each column in bh_reject for each TF and create dictionary of TFs (column heading) with their count
+    tfs_with_count = bh_reject.apply(lambda x: x.value_counts().get(True, 0)).to_dict()
+
+    # Define Plotly data and layout
+    graph_data = {
+        "data": cluster_coordinates,
+        "layout": layout,
+        "tfs": tfs_with_count,
+        "meta_data_cluster": meta_data.columns.tolist()
+    }
+
+    return jsonify(graph_data)
+
+
 @main.route("/update_plot", methods=["POST"])
 def update_plot():
     session_id = request.json["session_id"]
@@ -227,18 +278,14 @@ def update_plot():
 
     umap_data = read_umap_coordinates_file(upload_dir)
     meta_data = read_meta_data_file(upload_dir)
-    p_values = read_pvalues_file(upload_dir)
-    bh_reject = read_bh_reject(upload_dir)
 
     # create a list dictionary of clusters with coordinates
     cluster_coordinates = []
 
-    true_false_count = ""
-
     # No TF should be selected so use the meta_data_cluster column to plot the clusters
-    if tf_name == "Select Transcription Factor" or tf_name == "":
+    if tf_name == "Select an option" or tf_name == "":
         print("Cluster type is changed to: ", meta_data_cluster)
-        if meta_data_cluster and meta_data_cluster != "Select Meta Data Cluster":
+        if meta_data_cluster and meta_data_cluster != "Select an option":
             umap_data["Cluster"] = meta_data[meta_data_cluster].tolist()
             # Replace NaN's with "NaN" string if any
             umap_data["Cluster"] = umap_data["Cluster"].fillna("NaN")
@@ -269,56 +316,62 @@ def update_plot():
                     "size": 6,
                     "opacity": 0.5,
                 })
-    else:  # Some TF is selected so use the TF column to plot the clusters
-        # Count how many True, False and NaN values are there in the selected TF column and save it to dictionary
-        true_false_count = bh_reject[tf_name].value_counts().to_dict()
-        true_false_count["NaN"] = int(bh_reject[tf_name].isna().sum())
+    else:
+        p_values = read_pvalues_file(upload_dir)
+        bh_reject = read_bh_reject(upload_dir)
 
         umap_data[tf_name] = bh_reject[tf_name].astype(object)
         umap_data["pvalues"] = p_values[tf_name]
 
-        # Finding positive and negative values of the TF from the pvalues column and replace them with "A" and "I" respectively in the umap_data[tf_name] column
         mask = umap_data[tf_name] == True
-        umap_data.loc[mask, tf_name] = np.where(umap_data.loc[mask, "pvalues"] < 0, "I", "A")
+        umap_data.loc[mask, tf_name] = np.where(umap_data.loc[mask, "pvalues"] < 0, "Inactive", "Active")
+        umap_data[tf_name] = umap_data[tf_name].fillna("NaN")
+        umap_data[tf_name] = umap_data[tf_name].replace(False, "False")
 
-        color_map = {"A": "red",  # TF is significantly activated
-                     "I": "blue",  # TF is significantly inactivated
-                     False: "gray",
-                     np.nan: "gray"}  # Both not significant and NaN's are gary in color. We will treat both as the same
-        umap_data[tf_name] = umap_data[tf_name].map(color_map)
+        # Count Active, Inactive, False and NaN values in the TF column
+        true_false_count = umap_data[tf_name].value_counts().to_dict()
 
-        cluster_coordinates = (
-            [{
-                "x": umap_data["X_umap1"].tolist(),
-                "y": umap_data["X_umap2"].tolist(),
-                "mode": "markers",
-                "type": "scatter",
-                "marker": {
-                    "size": 6,
-                    "opacity": 0.5,
-                    "color": umap_data[tf_name].tolist(),
-                }
-            }]
-            if plot_type == "umap"
-            else [{
-                "x": umap_data["X_pca1"].tolist(),
-                "y": umap_data["X_pca2"].tolist(),
-                "mode": "markers",
-                "type": "scatter",
-                "marker": {
-                    "size": 6,
-                    "opacity": 0.5,
-                    "color": umap_data[tf_name].tolist(),
-                }
-            }]
-        )
+        unique_clusters = {
+            f"Active ({true_false_count['Active']})": "red",
+            f"Inactive ({true_false_count['Inactive']})": "blue",
+            f"False ({true_false_count['False']})": "gray",
+            f"NaN ({true_false_count['NaN']})": "gray"
+        }
 
-    # Dynamic Title
-    tf_name_and_counts = f" - {tf_name}  {true_false_count}" if tf_name else ""
+        if plot_type == "umap":
+            for cluster in unique_clusters.keys():
+                cluster_coordinates.append({
+                    "cluster": cluster,
+                    "x": umap_data[umap_data[tf_name] == cluster.split()[0]]["X_umap1"].tolist(),
+                    "y": umap_data[umap_data[tf_name] == cluster.split()[0]]["X_umap2"].tolist(),
+                    "mode": "markers",
+                    "type": "scatter",
+                    "name": cluster,
+                    "marker": {
+                        "size": 6,
+                        "opacity": 0.5,
+                        "color": unique_clusters[cluster]
+                    },
+                })
+        elif plot_type == "pca":
+            for cluster in unique_clusters.keys():
+                cluster_coordinates.append({
+                    "cluster": cluster,
+                    "x": umap_data[umap_data[tf_name] == cluster.split()[0]]["X_pca1"].tolist(),
+                    "y": umap_data[umap_data[tf_name] == cluster.split()[0]]["X_pca2"].tolist(),
+                    "mode": "markers",
+                    "type": "scatter",
+                    "name": cluster,
+                    "marker": {
+                        "size": 6,
+                        "opacity": 0.5,
+                        "color": unique_clusters[cluster]
+                    },
+                })
     title = (
-        f"UMAP Plot {tf_name_and_counts}"
+        f"UMAP Plot - {tf_name}"
         if plot_type == "umap"
-        else f"Top 2 PCA Components Plot {tf_name_and_counts}"
+        else f"Top 2 PCA Components Plot - {tf_name}"
     )
 
     # Define layout for the plot
@@ -329,36 +382,10 @@ def update_plot():
         "hovermode": "closest",
     }
 
-    # Define color scale for the plot
-    custom_color = (
-        umap_data["Cluster"].tolist()
-        if not tf_name
-        else umap_data[tf_name].tolist()
-    )
-
-    # custom_text = (
-    #     umap_data["Cluster"].tolist()
-    #     if not tf_name
-    #     else [
-    #         map_cluster_value(value) for value in umap_data[tf_name].tolist()
-    #     ]
-    # )
-    # custom_hovertemplate = (
-    #     "<b>Cluster:</b> %{text}<br><b>UMAP1:</b> %{x}<br><b>UMAP2:</b> %{y}"
-    #     if plot_type == "umap"
-    #     else "<b>Cluster:</b> %{text}<br><b>PCA1:</b> %{x}<br><b>PCA2:</b> %{y}"
-    # )
-
-    # Count the True values in each column in bh_reject for each TF and create dictionary of TFs (column heading) with their count
-    tfs_with_count = bh_reject.apply(lambda x: x.value_counts().get(True, 0)).to_dict()
-
     # Define Plotly data and layout
     graph_data = {
         "data": cluster_coordinates,
         "layout": layout,
-        "tfs": tfs_with_count,
-        "selected_tf": tf_name,
-        "meta_data_cluster": meta_data.columns.tolist()
     }
 
     return jsonify(graph_data)

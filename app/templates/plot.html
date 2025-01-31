@@ -4,77 +4,183 @@
 
 {% block content %}
 
-    <div class="flex grid grid-cols-3 gap-4">
-        <div class="flex col-span-2 border border-gray-300 rounded-md box-border" id="scatterPlot"></div>
+    <input type="hidden" id="session_id" value="{{ session_id }}">
 
-        <div class="" id="plotSettings">
+    <header class="bg-blue-900 p-4 flex items-center">
+        <h3 class="text-white text-2xl font-bold mx-auto">TF Activity Prediction Webserver</h3>
+    </header>
+
+    <div class="flex flex-row py-4 mx-4">
+        <button id="plotSettingsBtn" class="w-48 px-4 py-2 bg-blue-600 text-white rounded-lg">Plot Settings</button>
+
+        <div id="plot_info" class="flex flex-row gap-8 ml-4 items-center hidden">
+            <div>
+                <input type="checkbox" id="hide_insignificant">
+                <label for="hide_insignificant">Hide Insignificant Cells</label>
+            </div>
+            <div>
+                <input type="checkbox" id="hide_active">
+                <label for="hide_active">Hide Active Cells</label>
+            </div>
+            <div>
+                <input type="checkbox" id="hide_inactive">
+                <label for="hide_inactive">Hide Inactive Cells</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 border-gray-300 border-2" id="scatterPlot"></div>
+
+    {#    <div class="" id="plotSettings">#}
+    {#        <h3 class="text-2xl font-semibold mb-4">Plot Settings</h3>#}
+    {#        <div>#}
+    {#            <label for="plot_type">Plot Type:</label>#}
+    {#            <select name="plot_type" id="plot_type">#}
+    {#                <option value="umap" selected>UMAP</option>#}
+    {#                <option value="pca">Top 2 PCA Comp.</option>#}
+    {#            </select>#}
+    {#        </div>#}
+    {##}
+    {#        <h3>TF Analysis Settings</h3>#}
+    {#        <div>#}
+    {#            <label for="tf_name">Transcription Factor:</label>#}
+    {#            <select name="tf_name" id="tf_name">#}
+    {#            </select>#}
+    {#        </div>#}
+    {##}
+    {#        <br/>#}
+    {##}
+    {#        <div id="sort_tfs_div">#}
+    {#            <label for="sort_tfs">Sort TFs:</label>#}
+    {#            <select name="sort_tfs" id="sort_tfs">#}
+    {#                <option value="sort_alphabetically" selected>Alphabetically</option>#}
+    {#                <option value="sort_significance">Significance Cell Count</option>#}
+    {#            </select>#}
+    {#        </div>#}
+    {##}
+    {#        <br/>#}
+    {##}
+    {#        <div id="select_meta_data_cluster">#}
+    {#            <label for="meta_data_cluster">Select Meta Data Cluster:</label>#}
+    {#            <select name="meta_data_cluster" id="meta_data_cluster">#}
+    {#            </select>#}
+    {#        </div>#}
+    {##}
+    {#        <div>#}
+    {#            <form id="plotForm">#}
+    {#                <input type="hidden" id="session_id" value="{{ session_id }}">#}
+    {#                <button type="button" onclick="updatePlot()" class="my_button">Update Plot</button>#}
+    {#            </form>#}
+    {#        </div>#}
+    {##}
+    {#        <div id="plot_info" style="display: none;">#}
+    {#            <p>Note: Active - Red and Inactive - Blue</p>#}
+    {##}
+    {#            <div>#}
+    {#                <input type="checkbox" id="hide_insignificant" name="hide_insignificant">#}
+    {#                <label for="hide_insignificant">Hide Insignificant Cells</label>#}
+    {#            </div>#}
+    {##}
+    {#            <div>#}
+    {#                <input type="checkbox" id="hide_active" name="hide_active">#}
+    {#                <label for="hide_active">Hide Active Cells</label>#}
+    {#            </div>#}
+    {##}
+    {#            <div>#}
+    {#                <input type="checkbox" id="hide_inactive" name="hide_inactive">#}
+    {#                <label for="hide_inactive">Hide Inactive Cells</label>#}
+    {#            </div>#}
+    {##}
+    {#        </div>#}
+    {#    </div>#}
+
+
+    <!-- Popup Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-11/12 max-w-lg shadow-lg relative">
+            <!-- Close Button -->
+            <button id="closeSettingsBtn"
+                    class="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-2xl">&times;
+            </button>
+
             <h3 class="text-2xl font-semibold mb-4">Plot Settings</h3>
             <div>
                 <label for="plot_type">Plot Type:</label>
-                <select name="plot_type" id="plot_type">
+                <select name="plot_type" id="plot_type" class="border p-2 w-full">
                     <option value="umap" selected>UMAP</option>
                     <option value="pca">Top 2 PCA Comp.</option>
                 </select>
             </div>
 
-            <h3>TF Analysis Settings</h3>
+            <h3 class="mt-4">TF Analysis Settings</h3>
             <div>
                 <label for="tf_name">Transcription Factor:</label>
-                <select name="tf_name" id="tf_name">
-                </select>
+                <select name="tf_name" id="tf_name" class="border p-2 w-full"></select>
             </div>
 
-            <br/>
-
-            <div id="sort_tfs_div">
+            <div class="mt-4">
                 <label for="sort_tfs">Sort TFs:</label>
-                <select name="sort_tfs" id="sort_tfs">
+                <select name="sort_tfs" id="sort_tfs" class="border p-2 w-full">
                     <option value="sort_alphabetically" selected>Alphabetically</option>
                     <option value="sort_significance">Significance Cell Count</option>
                 </select>
             </div>
 
-            <br/>
-
-            <div id="select_meta_data_cluster">
+            <div class="mt-4">
                 <label for="meta_data_cluster">Select Meta Data Cluster:</label>
-                <select name="meta_data_cluster" id="meta_data_cluster">
-                </select>
+                <select name="meta_data_cluster" id="meta_data_cluster" class="border p-2 w-full"></select>
             </div>
 
-            <div>
-                <form id="plotForm">
-                    <input type="hidden" id="session_id" value="{{ session_id }}">
-                    <button type="button" onclick="updatePlot()" class="my_button">Update Plot</button>
-                </form>
-            </div>
-
-            <div id="plot_info" style="display: none;">
-                <p>Note: Active - Red and Inactive - Blue</p>
-
-                <div>
-                    <input type="checkbox" id="hide_insignificant" name="hide_insignificant">
-                    <label for="hide_insignificant">Hide Insignificant Cells</label>
-                </div>
-
-                <div>
-                    <input type="checkbox" id="hide_active" name="hide_active">
-                    <label for="hide_active">Hide Active Cells</label>
-                </div>
-
-                <div>
-                    <input type="checkbox" id="hide_inactive" name="hide_inactive">
-                    <label for="hide_inactive">Hide Inactive Cells</label>
-                </div>
-
+            <div class="mt-4">
+                <button type="button" onclick="updatePlotNew()" id="updatePlotBtn"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg w-full">Update Plot
+                </button>
             </div>
         </div>
     </div>
 
+    <script>
+        const openBtn = document.getElementById("plotSettingsBtn");
+        const closeBtn = document.getElementById("closeSettingsBtn");
+        const modal = document.getElementById("settingsModal");
+        const updatePlotBtn = document.getElementById("updatePlotBtn");
+
+        const tfDropdown = document.getElementById("tf_name");
+        const metaDataDropdown = document.getElementById("meta_data_cluster");
+
+        // Open Modal
+        openBtn.addEventListener("click", () => {
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        });
+
+        // Close Modal
+        closeBtn.addEventListener("click", () => {
+            modal.classList.add("hidden");
+        });
+
+        window.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                modal.classList.add("hidden");
+            }
+        });
+
+        window.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                modal.classList.add("hidden");
+            }
+        });
+
+        updatePlotBtn.addEventListener("click", () => {
+            modal.classList.add("hidden");
+        });
+
+    </script>
+
+
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
-    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
 
 {% endblock %}
 

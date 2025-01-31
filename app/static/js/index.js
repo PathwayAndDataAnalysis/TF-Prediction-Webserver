@@ -1,208 +1,156 @@
 let originalData = null;
 
 $(document).ready(function () {
-    updatePlot();
-
+    // Initialize DOM elements
+    const tfNameDropdown = document.getElementById("tf_name");
     const hideActive = document.getElementById('hide_active');
     const hideInactive = document.getElementById('hide_inactive');
     const hideInsignificant = document.getElementById('hide_insignificant');
-
     const sortTfs = document.getElementById('sort_tfs');
 
+    // Fetch the initial data from server
+    getPlotData();
+
     hideActive.addEventListener('click', function () {
-        console.log('hide active clicked');
-        updatePlotData();
+        modifyPlot(hideActive.checked, hideInactive.checked, hideInsignificant.checked)
     });
-
     hideInactive.addEventListener('click', function () {
-        console.log('hide inactive clicked');
-        updatePlotData();
+        modifyPlot(hideActive.checked, hideInactive.checked, hideInsignificant.checked)
     });
-
     hideInsignificant.addEventListener('click', function () {
-        console.log('hide insignificant clicked');
-        updatePlotData();
+        modifyPlot(hideActive.checked, hideInactive.checked, hideInsignificant.checked)
     });
+    sortTfs.addEventListener("change", sortTranscriptionFactors)
 
-    sortTfs.addEventListener("change", function () {
-        console.log("Sort TFs changed");
-
-        let sortedTfs = originalData.tfs;
-        if (sortTfs.value === "sort_significance") {
-            console.log("Sorting by Significance Cell Count");
-            // sortedTfs = {TF1: 10, TF2: 20, TF3: 5}. I want to sort by values
-            sortedTfs = Object.fromEntries(
-                Object.entries(sortedTfs).sort(([, a], [, b]) => b - a)
-            );
-        }
-
-        // update the dropdown document.getElementById('tf_name'); with the sorted values
-        let tfNameDropdown = document.getElementById('tf_name');
-        console.log("Sorted TFs:", sortedTfs);
-        sortedTfs = Object.keys(sortedTfs);
-        console.log("Sorted TFs Keys:", sortedTfs);
-        sortedTfs.unshift('Select Transcription Factor');
-        tfNameDropdown.innerHTML = '';
-        for (let i = 0; i < sortedTfs.length; i++) {
-            const option = document.createElement('option');
-            option.value = sortedTfs[i];
-            option.text = sortedTfs[i];
-
-            if (sortedTfs[i] === originalData.selected_tf)
-                option.selected = true;
-
-            tfNameDropdown.appendChild(option);
-        }
-    })
+    // Update plot when window is resized
+    window.addEventListener('resize', function () {
+        Plotly.relayout('scatterPlot', {
+            width: window.innerWidth * 0.93,
+            height: window.innerHeight * 0.91
+        });
+    });
 });
 
-function updatePlot() {
-    const tfNameDropdown = document.getElementById('tf_name');
 
-    const selectMetaDataCluster = document.getElementById('select_meta_data_cluster');
-    const metaDataClusterDropDown = document.getElementById('meta_data_cluster');
-    const plotInfo = document.getElementById('plot_info');
-
-    // Send data to server
-    fetch('/update_plot', {
+/**
+ * Fetches plot data from the server and initializes the plot.
+ */
+function getPlotData() {
+    fetch('/get_plot_data', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(
-            {
-                session_id: document.getElementById('session_id').value,
-                plot_type: document.getElementById('plot_type').value,
-                tf_name: document.getElementById('tf_name').value,
-                meta_data_cluster: document.getElementById('meta_data_cluster').value,
-            }
-        )
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({session_id: document.getElementById('session_id').value})
     })
         .then(response => response.json())
         .then(data => {
-            console.log("data: ", data);
             originalData = data; // Store the original data
             Plotly.newPlot('scatterPlot', data.data, data.layout);
 
-            // Update plot when window is resized
-            window.addEventListener('resize', function () {
-                Plotly.relayout('scatterPlot', {
-                    width: window.innerWidth * 0.83,
-                    height: window.innerHeight * 0.92
-                });
-            });
-
-            // Sort tfs based on the selected value
-            let tfs = data.tfs;
-            if (document.getElementById('sort_tfs').value === "sort_significance") {
-                console.log("Sorting by Significance Cell Count");
-                // sortedTfs = {TF1: 10, TF2: 20, TF3: 5}. I want to sort by values
-                tfs = Object.fromEntries(
-                    Object.entries(tfs).sort(([, a], [, b]) => b - a)
-                );
-            }
-
-            // Get keys only of data.tfs
-            tfs = Object.keys(tfs);
-
-            // Add Select Transcription Factor option in first position of tfs
-            tfs.unshift('Select Transcription Factor');
-
-            let selected_tf = data.selected_tf;
-
-            if (selected_tf === '') {
-                selected_tf = 'Select Transcription Factor';
-                plotInfo.style.display = 'none';
-                selectMetaDataCluster.style.display = 'block';
-
-                metaDataClusterDropDown.innerHTML = '';
-                let metaDataCluster = data.meta_data_cluster;
-                metaDataCluster.unshift('Select Meta Data Cluster');
-                let selected_meta_data_cluster = data.selected_meta_data_cluster;
-                for (let i = 0; i < metaDataCluster.length; i++) {
-                    const option = document.createElement('option');
-                    option.value = metaDataCluster[i];
-                    option.text = metaDataCluster[i];
-
-                    if (metaDataCluster[i] === selected_meta_data_cluster)
-                        option.selected = true;
-
-                    metaDataClusterDropDown.appendChild(option);
-                }
-
-            } else {
-                plotInfo.style.display = 'block';
-                selectMetaDataCluster.style.display = 'none';
-            }
-
-            tfNameDropdown.innerHTML = '';
-            for (let i = 0; i < tfs.length; i++) {
-                const option = document.createElement('option');
-                option.value = tfs[i];
-                option.text = tfs[i];
-
-                if (tfs[i] === selected_tf)
-                    option.selected = true;
-
-                tfNameDropdown.appendChild(option);
-            }
-
+            // Populate TF List and metadata dropdowns
+            populateDropdown('tf_name', Object.keys(data.tfs));
+            populateDropdown('meta_data_cluster', data.meta_data_cluster);
         })
-        .catch(error => {
-            console.error("Error updating plot:", error);
-        });
+        .catch(error => console.error("Error fetching plot data:", error));
 }
 
-function updatePlotData() {
+
+/**
+ * Updates the plot based on selected options.
+ */
+function updatePlotNew() {
+    const tfName = document.getElementById('tf_name').value;
+    const plotInfo = document.getElementById('plot_info');
+    fetch('/update_plot', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            session_id: document.getElementById('session_id').value,
+            plot_type: document.getElementById('plot_type').value,
+            tf_name: tfName,
+            meta_data_cluster: document.getElementById('meta_data_cluster').value,
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            originalData = data; // Update the original data
+            Plotly.react('scatterPlot', data.data, data.layout);
+
+            if (tfName === 'Select an option' || tfName === '') {
+                plotInfo.classList.add('hidden');
+            } else {
+                plotInfo.classList.remove('hidden');
+            }
+        })
+        .catch(error => console.error("Error updating plot:", error));
+
+}
+
+
+/**
+ * Modifies the plot based on the selected options.
+ * @param hideActive
+ * @param hideInactive
+ * @param hideInsignificant
+ */
+function modifyPlot(hideActive, hideInactive, hideInsignificant) {
     if (!originalData) return;
 
-    const hideActive = document.getElementById('hide_active').checked;
-    const hideInactive = document.getElementById('hide_inactive').checked;
-    const hideInsignificant = document.getElementById('hide_insignificant').checked;
+    let filteredData = originalData.data;
 
-    const filteredData = originalData.data.map(trace => {
+    if (hideActive)
+        filteredData = filteredData.filter(trace => {
+            return trace.marker.color !== 'red';
+        });
 
-        console.log("Filtering data for trace:", trace);
+    if (hideInactive)
+        filteredData = filteredData.filter(trace => {
+            return trace.marker.color !== 'blue';
+        });
 
-        const filteredX = [];
-        const filteredY = [];
-        const filteredColor = [];
+    if (hideInsignificant)
+        filteredData = filteredData.filter(trace => {
+            return trace.marker.color !== 'gray';
+        });
 
-        for (let i = 0; i < trace.x.length; i++) {
-            const color = trace.marker.color[i];
+    Plotly.react('scatterPlot', filteredData, originalData.layout);
+}
 
-            if ((hideActive && color === 'red')
-                || (hideInactive && color === 'blue')
-                || (hideInsignificant && color === 'gray')
-            ) {
-                continue;
-            }
 
-            filteredX.push(trace.x[i]);
-            filteredY.push(trace.y[i]);
-            filteredColor.push(color);
-        }
+/**
+ * Sorts transcription factors based on selected criteria.
+ */
+function sortTranscriptionFactors() {
+    if (!originalData) return;
 
-        return {
-            ...trace,
-            x: filteredX,
-            y: filteredY,
-            marker: {
-                ...trace.marker,
-                color: filteredColor
-            }
-        };
+    const sortTfs = document.getElementById("sort_tfs").value;
+    let sortedTfs = Object.entries(originalData.tfs);
+
+    if (sortTfs === "sort_significance") {
+        sortedTfs.sort(([, a], [, b]) => b - a);
+    }
+
+    populateDropdown('tf_name', sortedTfs.map(([key]) => key));
+}
+
+
+/**
+ * Populates a dropdown with options.
+ * @param {string} dropdownId - The ID of the dropdown.
+ * @param {Array} options - The options to populate.
+ */
+function populateDropdown(dropdownId, options) {
+    const dropdown = document.getElementById(dropdownId);
+    dropdown.innerHTML = '';
+
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select an option';
+    dropdown.appendChild(defaultOption);
+
+    options.forEach(optionValue => {
+        const option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = optionValue;
+        dropdown.appendChild(option);
     });
-
-    console.log("Plotting filtered data:", filteredData);
-    // react relayouts the plot
-    Plotly.react('scatterPlot', filteredData, originalData.data[0].layout);
-
-    // // This is an alternative way to update the plot. But the toggling data is not working
-    // Plotly.update('scatterPlot', {
-    //     x: filteredData.map(trace => trace.x),
-    //     y: filteredData.map(trace => trace.y),
-    //     'marker.color': filteredData.map(trace => trace.marker.color)
-    // });
-
 }
