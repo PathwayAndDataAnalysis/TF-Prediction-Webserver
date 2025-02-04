@@ -41,6 +41,7 @@ def get_sd(max_target: int, total_genes: int, iters: int):
     )
     dist = np.std(np.array(dist).T, axis=1)
     np.savez_compressed(file=sd_file, distribution=dist)
+    print("Distribution file generated successfully.")
     return dist
 
 
@@ -132,6 +133,7 @@ def main(prior_network: pd.DataFrame, gene_exp: pd.DataFrame, iters: int):
         iters=iters,
     )
 
+    print("Running analysis in multiple cores...")
     return run_analysis(
         tfs=prior_network.index,
         gene_exp=gene_exp,
@@ -165,7 +167,7 @@ def read_mouse_to_human_mapping_file():
     return pd.read_csv(mth_file_path, sep="\t")
 
 
-def read_data(p_file: str, g_file: str, upload_dir):
+def read_data(p_file: str, g_file: str, organism: str, upload_dir: str):
     p_file_path = os.path.join(upload_dir, p_file)
 
     prior_network = pd.read_csv(
@@ -188,20 +190,21 @@ def read_data(p_file: str, g_file: str, upload_dir):
     gene_exp = pd.read_csv(g_file_path, sep="\t", index_col=0)
 
     # Mouse to human Mapping process
-    mouse_to_human = read_mouse_to_human_mapping_file()
+    if organism.lower() == "mouse":
+        mouse_to_human = read_mouse_to_human_mapping_file()
 
-    # Replace index with human gene IDs, filter, clean, and explode
-    gene_exp = gene_exp.rename(
-        index=dict(zip(mouse_to_human["Mouse"], mouse_to_human["Human"]))
-    )
-    gene_exp = gene_exp[gene_exp.index.str.match(r"^\[.*\]$")]
-    gene_exp.index = gene_exp.index.str.strip("[]")
-    gene_exp = (
-        gene_exp.assign(index=gene_exp.index.str.split(","))
-        .explode("index")
-        .reset_index(drop=True)
-    )
-    gene_exp = gene_exp.set_index("index")
+        # Replace index with human gene IDs, filter, clean, and explode
+        gene_exp = gene_exp.rename(
+            index=dict(zip(mouse_to_human["Mouse"], mouse_to_human["Human"]))
+        )
+        gene_exp = gene_exp[gene_exp.index.str.match(r"^\[.*\]$")]
+        gene_exp.index = gene_exp.index.str.strip("[]")
+        gene_exp = (
+            gene_exp.assign(index=gene_exp.index.str.split(","))
+            .explode("index")
+            .reset_index(drop=True)
+        )
+        gene_exp = gene_exp.set_index("index")
 
     gene_exp = gene_exp.replace(0.0, np.nan).dropna(
         thresh=int(len(gene_exp.columns) * 0.05)
@@ -210,13 +213,12 @@ def read_data(p_file: str, g_file: str, upload_dir):
     return prior_network, gene_exp
 
 
-def get_pvalues(prior_file: str, gene_file: str, iters: int, upload_dir) -> pd.DataFrame:
+def get_pvalues(prior_file: str, gene_file: str, organism: str, iters: int, upload_dir) -> pd.DataFrame:
     try:
-        prior_net, gene_e = read_data(prior_file, gene_file, upload_dir)
+        prior_net, gene_e = read_data(prior_file, gene_file, organism, upload_dir)
         p_values = main(prior_net, gene_e, iters)
         p_values.dropna(axis=1, how="all", inplace=True)
         return p_values
 
     except Exception as e:
         raise Exception(f"Failed to run the analysis: {e}")
-

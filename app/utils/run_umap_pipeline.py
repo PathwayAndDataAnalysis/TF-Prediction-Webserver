@@ -23,9 +23,10 @@ def run_umap_pipeline(
         metric: str = "cosine",
         uuid_folder_name: str = None,
 ) -> pd.DataFrame:
-    # Path to the "uploads" folder (use absolute path for robustness)
-    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads/" + uuid_folder_name)
+    if uuid_folder_name is None:
+        raise ValueError("Analysis hash id is missing")
 
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads/" + uuid_folder_name)
     data_matrix_path = os.path.join(upload_dir, data_matrix_filename)
     meta_data_path = os.path.join(upload_dir, meta_data_filename)
 
@@ -51,9 +52,9 @@ def run_umap_pipeline(
     # Filter cells and genes
     print("Filtering and normalizing data...")
     if filter_cells == "on":
-        sc.pp.filter_cells(adata, min_genes=filter_genes_value)
+        sc.pp.filter_cells(adata, min_cells=filter_cells_value)
     if filter_genes == "on":
-        sc.pp.filter_genes(adata, min_cells=filter_cells_value)
+        sc.pp.filter_genes(adata, min_genes=filter_genes_value)
 
     # Filter mitochondrial genes
     print("Filtering mitochondrial genes...")
@@ -88,13 +89,102 @@ def run_umap_pipeline(
     sc.tl.umap(adata, min_dist=min_dist)
 
     print("Saving UMAP coordinates...")
-    # cluster_column = "seurat_clusters"
-    cluster_column = "orig.ident"
+    cluster_column = "seurat_clusters"
+    # cluster_column = "orig.ident"
 
     # Save the UMAP coordinates
     umap_df = adata.obsm.to_df()
     umap_df["Cluster"] = (
         adata.obs[cluster_column] if cluster_column in adata.obs else None
     )
+
+    return umap_df
+
+
+def run_umap_pipeling_anndata(
+        adata_filename: str,
+        organism: str,
+        filter_cells: str = "on",
+        filter_cells_value: int = 200,
+        filter_genes: str = "on",
+        filter_genes_value: int = 3,
+        qc_filter: str = "on",
+        qc_filter_value: float = 10,
+        data_normalize: str = "on",
+        data_normalize_value: int = 1e4,
+        log_transform: str = "on",
+        pca_components: int = 10,
+        n_neighbors: int = 15,
+        min_dist: float = 0.1,
+        metric: str = "cosine",
+        uuid_folder_name: str = None,
+) -> pd.DataFrame:
+    if uuid_folder_name is None:
+        raise ValueError("Analysis hash id is missing")
+
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads/" + uuid_folder_name)
+
+    adata_path = os.path.join(upload_dir, adata_filename)
+
+    if not Path(adata_path).exists():
+        raise FileNotFoundError(f"File not found: {adata_path}")
+
+    # Load AnnData object
+    adata = sc.read_h5ad(adata_path)
+
+    # Save gene expression and metadata
+    gene_expression_df = pd.DataFrame(
+        adata.X.toarray(), index=adata.obs.index, columns=adata.var.index
+    )
+    gene_expression_df = gene_expression_df.T
+    gene_expression_df.to_csv(os.path.join(upload_dir, "gene_expression.tsv"), sep="\t")
+    adata.obs.to_csv(os.path.join(upload_dir, "meta_data.tsv"), sep="\t")
+
+    # Filter cells and genes
+    print("Filtering and normalizing data...")
+    if filter_cells == "on":
+        sc.pp.filter_cells(adata, min_genes=filter_cells_value)
+    if filter_genes == "on":
+        sc.pp.filter_genes(adata, min_cells=filter_genes_value)
+
+    # Filter mitochondrial genes based on organism
+    print("Filtering mitochondrial genes...")
+    if organism.lower() == "human":
+        adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    elif organism.lower() == "mouse":
+        adata.var["mt"] = adata.var_names.str.startswith("mt-")
+    else:
+        raise ValueError(f"Unknown organism: {organism}")
+
+    if qc_filter == "on":
+        sc.pp.calculate_qc_metrics(
+            adata, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True
+        )
+        adata = adata[adata.obs.pct_counts_mt < qc_filter_value, :]
+        del adata.var["mt"]
+
+    # Normalize data
+    print("Normalizing data...")
+    if data_normalize == "on":
+        sc.pp.normalize_total(adata, target_sum=data_normalize_value)
+
+    # Log transformation
+    print("Log transforming data...")
+    if log_transform == "on":
+        sc.pp.log1p(adata)
+
+    # Perform PCA
+    print("Running PCA...")
+    sc.tl.pca(adata, n_comps=pca_components)
+
+    # Perform UMAP
+    print("Running UMAP...")
+    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=pca_components, metric=metric)
+    sc.tl.umap(adata, min_dist=min_dist)
+
+    print("Saving UMAP coordinates...")
+    umap_df = adata.obsm.to_df()
+    umap_df.index = adata.obs_names
+    umap_df["Cluster"] = "NNN"
 
     return umap_df

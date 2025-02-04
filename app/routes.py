@@ -11,7 +11,7 @@ from app.utils.read_data import (
     read_pvalues_file,
     read_bh_reject,
 )
-from app.utils.run_umap_pipeline import run_umap_pipeline
+from app.utils.run_umap_pipeline import run_umap_pipeline, run_umap_pipeling_anndata
 # from app.utils.tf_analysis import get_pvalues
 from app.utils.run_analysis import get_pvalues
 from app.utils.utils import map_cluster_value, allowed_file
@@ -104,26 +104,18 @@ def view_plot_session_id(session_id):
 
 @main.route("/umap", methods=["GET", "POST"])
 def run_umap():
-    # return render_template("plot.html")
     if request.method == "POST":
-        print(request.files)
-        if "data_matrix" not in request.files or "meta_data" not in request.files or "prior_data" not in request.files:
-            return "No file part"
+        is_ann_data = request.form["have_anndata_checkbox"]
 
-        data_matrix_file = request.files["data_matrix"]
-        meta_data_file = request.files["meta_data"]
-        prior_data_file = request.files["prior_data"]  # for TF analysis
+        if is_ann_data == "on":
+            if "anndata_upload" not in request.files:
+                return "No AnnData file part"
+            ann_data_file = request.files["anndata_upload"]
+            prior_data_file = request.files["prior_data"]  # for TF analysis
 
-        if data_matrix_file.filename == "" or meta_data_file.filename == "" or prior_data_file.filename == "":
-            return "No selected file"
+            if ann_data_file.filename == "":
+                return "No selected file"
 
-        if (data_matrix_file
-                and allowed_file(data_matrix_file.filename)
-                and meta_data_file
-                and allowed_file(meta_data_file.filename)
-                and prior_data_file
-                and allowed_file(prior_data_file.filename)
-        ):
             print("First Running UMAP Pipeline....")
             # Create an uuid folder to store the uploaded files
             uuid_folder_name = SESSION_ID
@@ -131,16 +123,10 @@ def run_umap():
             upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads/" + uuid_folder_name)
             os.makedirs(upload_dir)
 
-            data_matrix_filename = os.path.join(upload_dir, data_matrix_file.filename)
-            meta_data_filename = os.path.join(upload_dir, meta_data_file.filename)
+            ann_data_filename = os.path.join(upload_dir, ann_data_file.filename)
             prior_data_filename = os.path.join(upload_dir, prior_data_file.filename)  # for TF analysis
-
-            # data_matrix_filename = os.path.join(UPLOAD_DIR, data_matrix_file.filename)
-            # meta_data_filename = os.path.join(UPLOAD_DIR, meta_data_file.filename)
-
-            data_matrix_file.save(data_matrix_filename)
-            meta_data_file.save(meta_data_filename)
-            prior_data_file.save(prior_data_filename)  # for TF analysis
+            ann_data_file.save(ann_data_filename)
+            prior_data_file.save(prior_data_filename)
 
             # Now run the UMAP Pipeline
             print("request.form ", request.form)
@@ -155,17 +141,15 @@ def run_umap():
             data_normalize = request.form["data_normalize"]
             data_normalize_value = request.form["data_normalize_value"]
             log_transform = request.form["log_transform"]
-
             pca_components = int(request.form["pca_components"])
-
             n_neighbors = int(request.form["n_neighbors"])
             min_dist = float(request.form["min_dist"])
             metric = request.form["metric"]
 
             # Now run the UMAP Pipeline
-            umap_df = run_umap_pipeline(
-                data_matrix_filename=data_matrix_filename.split("/")[-1],
-                meta_data_filename=meta_data_filename.split("/")[-1],
+            print("Running UMAP...")
+            umap_df = run_umap_pipeling_anndata(
+                adata_filename=ann_data_filename.split("/")[-1],
                 organism=organism,
                 filter_cells=filter_cells,
                 filter_cells_value=int(filter_cells_value),
@@ -190,7 +174,8 @@ def run_umap():
             try:
                 p_values = get_pvalues(
                     prior_data_filename.split("/")[-1],
-                    data_matrix_filename.split("/")[-1],
+                    "gene_expression.tsv",
+                    organism,
                     iters,
                     upload_dir
                 )
@@ -207,6 +192,103 @@ def run_umap():
 
             print("Done with UMAP and TF analysis. Now rendering plot.html")
             return render_template("plot.html", session_id=uuid_folder_name)
+
+        else:
+            if "data_matrix" not in request.files or "meta_data" not in request.files or "prior_data" not in request.files:
+                return "No file part"
+
+            data_matrix_file = request.files["data_matrix"]
+            meta_data_file = request.files["meta_data"]
+            prior_data_file = request.files["prior_data"]  # for TF analysis
+
+            if data_matrix_file.filename == "" or meta_data_file.filename == "" or prior_data_file.filename == "":
+                return "No selected file"
+
+            if (data_matrix_file
+                    and allowed_file(data_matrix_file.filename)
+                    and meta_data_file
+                    and allowed_file(meta_data_file.filename)
+                    and prior_data_file
+                    and allowed_file(prior_data_file.filename)
+            ):
+                print("First Running UMAP Pipeline....")
+                # Create an uuid folder to store the uploaded files
+                uuid_folder_name = SESSION_ID
+                print("uuid_folder_name: ", uuid_folder_name)
+                upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads/" + uuid_folder_name)
+                os.makedirs(upload_dir)
+
+                data_matrix_filename = os.path.join(upload_dir, data_matrix_file.filename)
+                meta_data_filename = os.path.join(upload_dir, meta_data_file.filename)
+                prior_data_filename = os.path.join(upload_dir, prior_data_file.filename)  # for TF analysis
+
+                data_matrix_file.save(data_matrix_filename)
+                meta_data_file.save(meta_data_filename)
+                prior_data_file.save(prior_data_filename)  # for TF analysis
+
+                # Now run the UMAP Pipeline
+                print("request.form ", request.form)
+                organism = request.form["organism"]
+
+                filter_cells = request.form["filter_cells"]
+                filter_cells_value = request.form["filter_cells_value"]
+                filter_genes = request.form["filter_genes"]
+                filter_genes_value = request.form["filter_genes_value"]
+                qc_filter = request.form["qc_filter"]
+                qc_filter_value = request.form["qc_filter_value"]
+                data_normalize = request.form["data_normalize"]
+                data_normalize_value = request.form["data_normalize_value"]
+                log_transform = request.form["log_transform"]
+                pca_components = int(request.form["pca_components"])
+                n_neighbors = int(request.form["n_neighbors"])
+                min_dist = float(request.form["min_dist"])
+                metric = request.form["metric"]
+
+                # Now run the UMAP Pipeline
+                umap_df = run_umap_pipeline(
+                    data_matrix_filename=data_matrix_filename.split("/")[-1],
+                    meta_data_filename=meta_data_filename.split("/")[-1],
+                    organism=organism,
+                    filter_cells=filter_cells,
+                    filter_cells_value=int(filter_cells_value),
+                    filter_genes=filter_genes,
+                    filter_genes_value=int(filter_genes_value),
+                    qc_filter=qc_filter,
+                    qc_filter_value=float(qc_filter_value),
+                    data_normalize=data_normalize,
+                    data_normalize_value=int(data_normalize_value),
+                    log_transform=log_transform,
+                    pca_components=pca_components,
+                    n_neighbors=n_neighbors,
+                    min_dist=min_dist,
+                    metric=metric,
+                    uuid_folder_name=uuid_folder_name
+                )
+                umap_df.to_csv(os.path.join(upload_dir, "umap_coordinates.csv"))
+
+                # Now run the TF analysis
+                print("Running TF analysis....")
+                iters = int(request.form["iters"])
+                try:
+                    p_values = get_pvalues(
+                        prior_data_filename.split("/")[-1],
+                        data_matrix_filename.split("/")[-1],
+                        iters,
+                        upload_dir
+                    )
+                    p_file_path = os.path.join(upload_dir, "p_values.tsv")
+                    p_values.to_csv(p_file_path, sep="\t")
+
+                    # Now run the Benjamini-Hochberg FDR correction
+                    reject = bh_frd_correction(p_file_path, alpha=0.05)
+                    reject_file_path = os.path.join(upload_dir, "reject.tsv")
+                    reject.to_csv(reject_file_path, sep="\t")
+
+                except Exception as e:
+                    return trigger_custom_error(str(e))
+
+                print("Done with UMAP and TF analysis. Now rendering plot.html")
+                return render_template("plot.html", session_id=uuid_folder_name)
 
         return trigger_custom_error("Invalid file type")
 
@@ -403,7 +485,6 @@ def result():
         print("session_id: ", session_id)
 
         return render_template("plot.html", session_id=session_id)
-
     else:
         return trigger_custom_error("Invalid request method")
 

@@ -11,11 +11,11 @@
     <div class="flex-1 max-w-8xl mx-2 sm:mx-2 md:mx-4 lg:mx-16 xl:mx-48 2xl:mx-64 p-2 bg-white shadow-md rounded-lg">
         <h3 class="text-2xl font-semibold mb-4">Want to see your previous result?</h3>
         <form action="/result" method="post" enctype="multipart/form-data" class="mb-8">
-            <div class="outline_div p-4 bg-gray-100 rounded-lg">
+            <div class="p-4 bg-gray-100 rounded-lg">
                 <div class="mb-4">
                     <label for="results" class="block text-gray-700 font-medium">Session ID:</label>
                     <input type="text" name="session_id" id="session_id"
-                           class="w-full p-2 border border-gray-300 rounded-lg">
+                           class="w-full p-2 border border-gray-300 rounded-lg"/>
                 </div>
             </div>
             <input type="submit" value="See Result"
@@ -25,19 +25,39 @@
         <h3 class="text-2xl font-semibold mb-4">Pipeline parameters</h3>
         <form action="/umap" method="post" enctype="multipart/form-data" class="mb-8">
 
-            <div class="outline_div p-4 bg-gray-100 rounded-lg mb-4">
-                <div class="mb-4">
-                    <label for="data_matrix" class="block text-gray-700 font-medium">Gene Expression Data:</label>
-                    <input type="file" name="data_matrix" id="data_matrix"
-                           class="w-full p-2 border border-gray-300 rounded-lg">
-                </div>
+            <div class="p-4 bg-gray-100 rounded-lg mb-4">
 
                 <p class="font-semibold text-gray-700 mb-2">FOR UMAP:</p>
+
                 <div class="mb-4">
-                    <label for="meta_data" class="block text-gray-700 font-medium">Meta Data for UMAP:</label>
-                    <input type="file" name="meta_data" id="meta_data"
-                           class="w-full p-2 border border-gray-300 rounded-lg">
+                    <input type="checkbox" id="have_anndata_checkbox" name="have_anndata_checkbox" value="on"
+                           class="mr-2"/>
+                    <label for="anndata" class="text-gray-700">Have AnnData File?</label>
                 </div>
+
+                <div id="view_gene_exp_metadata" class="">
+                    <div class="mb-4">
+                        <label for="data_matrix" class="block text-gray-700 font-medium">Gene Expression Data:</label>
+                        <input type="file" name="data_matrix" id="data_matrix"
+                               class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="meta_data" class="block text-gray-700 font-medium">Meta Data for UMAP:</label>
+                        <input type="file" name="meta_data" id="meta_data"
+                               class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+
+                <div id="view_anndata_upload" class="hidden">
+                    <div class="mb-4">
+                        <label for="anndata_upload" class="block text-gray-700 font-medium">AnnData File (File having
+                            .h5ad extension):</label>
+                        <input type="file" name="anndata_upload" id="anndata_upload"
+                               class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+
 
                 <div class="mb-4">
                     <label for="organism" class="block text-gray-700 font-medium">Organism:</label>
@@ -139,167 +159,7 @@
                    class="my_button bg-blue-700 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
         </form>
     </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
 {% endblock %}
-
-
-
-{#{% extends "layout.html" %}#}
-{##}
-{#{% block title %}Home{% endblock %}#}
-{##}
-{#{% block content %}#}
-{##}
-{#    <h3>Want to see your previous result?</h3>#}
-{#    <form action="/result" method="post" enctype="multipart/form-data">#}
-{#        <div class="outline_div">#}
-{#            <div>#}
-{#                <label for="results">Session ID:</label>#}
-{#                <input type="text" name="session_id" id="session_id" style="width: 400px;">#}
-{#            </div>#}
-{#        </div>#}
-{#        <input type="submit" value="See Result" class="my_button">#}
-{#    </form>#}
-{##}
-{#    <h3>Transcription Factor Activity Prediction Inputs</h3>#}
-{#    <form action="/run_analysis" method="post" enctype="multipart/form-data">#}
-{#        <div class="outline_div">#}
-{#            <div>#}
-{#                <label for="gene_expression_data">Gene Expression:</label>#}
-{#                <input type="file" name="gene_expression_data" id="gene_expression_data">#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <label for="prior_data">Prior Data File:</label>#}
-{#                <input type="file" name="prior_data" id="prior_data">#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <label for="iters">Iterations: </label>#}
-{#                <input type="number" name="iters" id="iters" value="100000">#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <input type="submit" value="Run Analysis" class="my_button">#}
-{#            </div>#}
-{#        </div>#}
-{#    </form>#}
-{##}
-{##}
-{#    <h3>Pipeline parameters</h3>#}
-{#    <form action="/umap" method="post" enctype="multipart/form-data">#}
-{##}
-{#        <div class="outline_div">#}
-{#            <div>#}
-{#                <label for="data_matrix">Gene Expression Data:</label>#}
-{#                <input type="file" name="data_matrix" id="data_matrix">#}
-{#            </div>#}
-{##}
-{#            <br/>#}
-{#            <p>FOR UMAP:</p>#}
-{#            <div>#}
-{#                <label for="meta_data">Meta Data for UMAP:</label>#}
-{#                <input type="file" name="meta_data" id="meta_data">#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <label for="organism">Organism:</label>#}
-{#                <select name="organism" id="organism">#}
-{#                    <option value="human">Human</option>#}
-{#                    <option value="mouse">Mouse</option>#}
-{#                </select>#}
-{#            </div>#}
-{##}
-{#            <br/>#}
-{#            <p>FOR ANALYSIS:</p>#}
-{#            <div>#}
-{#                <label for="prior_data">Prior Data File:</label>#}
-{#                <input type="file" name="prior_data" id="prior_data">#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <label for="iters">Iterations: </label>#}
-{#                <input type="number" name="iters" id="iters" value="1000">#}
-{#            </div>#}
-{#        </div>#}
-{##}
-{#        <div class="outline_div">#}
-{#            <p>Data Filtering:</p>#}
-{##}
-{#            <div>#}
-{#                <input type="checkbox" id="filter-cells" name="filter_cells" value="on" checked>#}
-{#                <label for="filter-cells">Filter cells expressed in less than</label>#}
-{#                <label>#}
-{#                    <input type="number" id="filter-cells-value" name="filter_cells_value" value="200" min="0">#}
-{#                </label>#}
-{#                <span>of genes</span>#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <input type="checkbox" id="filter-genes" name="filter_genes" value="on" checked>#}
-{#                <label for="filter-genes">Filter genes expressed in less than</label>#}
-{#                <label>#}
-{#                    <input type="number" id="filter-genes-value" name="filter_genes_value" value="20" min="0">#}
-{#                </label>#}
-{#                <span>of cells</span>#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <input type="checkbox" id="qc-filter" name="qc_filter" value="on" checked>#}
-{#                <label for="qc-filter">Apply QC filter with threshold</label>#}
-{#                <label>#}
-{#                    <input type="number" id="qc-filter-value" name="qc_filter_value" value="10" min="0">#}
-{#                </label>#}
-{#                <span>% of Mitochondrial (MT) Genes</span>#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <input type="checkbox" id="data-normalize" name="data_normalize" value="on" checked>#}
-{#                <label for="data-normalize">Normalize data to</label>#}
-{#                <label>#}
-{#                    <input type="number" id="data-normalize-value" name="data_normalize_value" value="10000" min="0">#}
-{#                </label>#}
-{#                <span>scale</span>#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <input type="checkbox" id="log-transform" name="log_transform" value="on" checked>#}
-{#                <label for="log-transform">Apply Log transformation</label>#}
-{#            </div>#}
-{#        </div>#}
-{##}
-{#        <div class="outline_div">#}
-{#            <p>Dimension Reduction:</p>#}
-{#            <div>#}
-{#                <label for="pca_components">Number of PCA Components:</label>#}
-{#                <input type="number" name="pca_components" id="pca_components" value="10" min="2">#}
-{#            </div>#}
-{#        </div>#}
-{##}
-{#        <div class="outline_div">#}
-{#            <p>2D Projection: </p>#}
-{#            <div>#}
-{#                <label for="n_neighbors">n_neighbors:</label>#}
-{#                <input type="number" name="n_neighbors" id="n_neighbors" value="15" min="0">#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <label for="min_dist">min_dist:</label>#}
-{#                <input type="text" name="min_dist" id="min_dist" value="0.1">#}
-{#            </div>#}
-{##}
-{#            <div>#}
-{#                <label for="metric">metric:</label>#}
-{##}
-{#                <select name="metric" id="metric">#}
-{#                    <option value="cosine">cosine</option>#}
-{#                    <option value="euclidean">euclidean</option>#}
-{#                </select>#}
-{#            </div>#}
-{#        </div>#}
-{##}
-{#        <input type="submit" value="Run UMAP and Analysis" class="my_button">#}
-{#    </form>#}
-{##}
-{#{% endblock %}#}
-{##}
