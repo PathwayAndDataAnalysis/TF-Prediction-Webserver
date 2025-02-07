@@ -19,12 +19,6 @@ from app.utils.utils import map_cluster_value, allowed_file
 main = Blueprint("main", __name__)
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads")
-SESSION_ID = str(uuid.uuid4())
-
-
-@main.route("/get_session_id")
-def get_session_id():
-    return jsonify({"session_id": SESSION_ID})
 
 
 @main.route("/")
@@ -122,7 +116,7 @@ def run_umap():
 
             print("First Running UMAP Pipeline....")
             # Create an uuid folder to store the uploaded files
-            uuid_folder_name = SESSION_ID
+            uuid_folder_name = str(uuid.uuid4())
             print("uuid_folder_name: ", uuid_folder_name)
             upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads/" + uuid_folder_name)
             os.makedirs(upload_dir)
@@ -210,7 +204,7 @@ def run_umap():
 
             print("First Running UMAP Pipeline....")
             # Create an uuid folder to store the uploaded files
-            uuid_folder_name = SESSION_ID
+            uuid_folder_name = str(uuid.uuid4())
             print("uuid_folder_name: ", uuid_folder_name)
             upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/uploads/" + uuid_folder_name)
             os.makedirs(upload_dir)
@@ -369,7 +363,17 @@ def update_plot():
     if tf_name == "Select an option" or tf_name == "":
         print("Cluster type is changed to: ", meta_data_cluster)
         if meta_data_cluster and meta_data_cluster != "Select an option":
-            umap_data["Cluster"] = meta_data[meta_data_cluster].tolist()
+            # umap_data["Cluster"] = meta_data[meta_data_cluster].tolist() # Ignore if the length is not equal put np.nan if not matching
+            if len(umap_data) == len(meta_data):
+                umap_data["Cluster"] = meta_data[meta_data_cluster].tolist()
+            else:
+                # Extend or truncate to match the length of umap_data
+                cluster_values = meta_data[meta_data_cluster].tolist()
+                cluster_values = (cluster_values[:len(umap_data)] + [np.nan]
+                                  * max(0, len(umap_data) - len(cluster_values)))
+                # Assign the processed list to umap_data
+                umap_data["Cluster"] = cluster_values
+
             umap_data["Cluster"] = umap_data["Cluster"].fillna("NaN")
 
         tf_name = ""
@@ -399,6 +403,7 @@ def update_plot():
                     "opacity": 0.5,
                 })
     else:
+        # Transcription factor is selected
         p_values = read_pvalues_file(upload_dir)
 
         umap_data[tf_name] = bh_reject[tf_name].astype(object)
@@ -411,6 +416,26 @@ def update_plot():
 
         # Count Active, Inactive, False and NaN values in the TF column
         true_false_count = defaultdict(int, umap_data[tf_name].value_counts().to_dict())
+
+        # ----------------- Map perturbation from meta_data to TFs -----------------
+
+        active_cells = umap_data[umap_data[tf_name] == "Active"].index
+        inactive_cells = umap_data[umap_data[tf_name] == "Inactive"].index
+
+        meta_data["perturb_tf"] = meta_data["perturbation"].str.split("_").str[0]
+        perturb_cells = meta_data[meta_data["perturb_tf"] == tf_name].index
+
+        if len(perturb_cells) == 0:
+            print("No perturbation data found for the selected TF")
+        else:
+            # Calculate the intersection of active_cells and perturb_cells
+            active_perturb_cells = list(set(active_cells) & set(perturb_cells))
+            inactive_perturb_cells = list(set(inactive_cells) & set(perturb_cells))
+
+            print("overlapping cells between active and perturb: ", len(active_perturb_cells))
+            print("overlapping cells between inactive and perturb: ", len(inactive_perturb_cells))
+
+        # -------------------- End --------------------
 
         unique_clusters = {
             f"Active ({true_false_count['Active']})": "red",
