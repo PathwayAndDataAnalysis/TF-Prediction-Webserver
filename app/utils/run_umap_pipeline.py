@@ -2,6 +2,7 @@ import scanpy as sc
 import pandas as pd
 import os
 from pathlib import Path
+from scipy.sparse import issparse
 
 
 def run_umap_pipeline(
@@ -133,7 +134,9 @@ def run_umap_pipeling_anndata(
 
     # Save gene expression and metadata
     gene_expression_df = pd.DataFrame(
-        adata.X.toarray(), index=adata.obs.index, columns=adata.var.index
+        adata.X.toarray() if issparse(adata.X) else adata.X,
+        index=adata.obs.index,
+        columns=adata.var.index
     ).T
     gene_expression_df.to_csv(os.path.join(upload_dir, "gene_expression.tsv"), sep="\t")
     adata.obs.to_csv(os.path.join(upload_dir, "meta_data.tsv"), sep="\t")

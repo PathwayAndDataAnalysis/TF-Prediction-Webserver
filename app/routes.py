@@ -418,22 +418,25 @@ def update_plot():
         true_false_count = defaultdict(int, umap_data[tf_name].value_counts().to_dict())
 
         # ----------------- Map perturbation from meta_data to TFs -----------------
+        if "perturbation" in meta_data.columns:
+            active_cells = umap_data[umap_data[tf_name] == "Active"].index
+            inactive_cells = umap_data[umap_data[tf_name] == "Inactive"].index
 
-        active_cells = umap_data[umap_data[tf_name] == "Active"].index
-        inactive_cells = umap_data[umap_data[tf_name] == "Inactive"].index
+            meta_data["perturb_tf"] = meta_data["perturbation"].str.split("_").str[0]
+            perturb_cells = meta_data[meta_data["perturb_tf"] == tf_name].index
 
-        meta_data["perturb_tf"] = meta_data["perturbation"].str.split("_").str[0]
-        perturb_cells = meta_data[meta_data["perturb_tf"] == tf_name].index
+            if len(perturb_cells) == 0:
+                print("No perturbation data found for the selected TF")
+            else:
+                # Calculate the intersection of active_cells and perturb_cells
+                active_perturb_cells = list(set(active_cells) & set(perturb_cells))
+                inactive_perturb_cells = list(set(inactive_cells) & set(perturb_cells))
 
-        if len(perturb_cells) == 0:
-            print("No perturbation data found for the selected TF")
-        else:
-            # Calculate the intersection of active_cells and perturb_cells
-            active_perturb_cells = list(set(active_cells) & set(perturb_cells))
-            inactive_perturb_cells = list(set(inactive_cells) & set(perturb_cells))
-
-            print("overlapping cells between active and perturb: ", len(active_perturb_cells))
-            print("overlapping cells between inactive and perturb: ", len(inactive_perturb_cells))
+                print("Number of active cells: ", len(active_cells))
+                print("Number of inactive cells: ", len(inactive_cells))
+                print("Number of perturb cells: ", len(perturb_cells))
+                print("overlapping cells between active and perturb: ", len(active_perturb_cells))
+                print("overlapping cells between inactive and perturb: ", len(inactive_perturb_cells))
 
         # -------------------- End --------------------
 
